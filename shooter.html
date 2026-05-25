@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Arcade Striker - 50 Balls Stage 1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #090d16; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .game-container { background: #111827; border: 2px solid #38bdf8; border-radius: 20px; padding: 15px; max-width: 450px; width: 100%; text-align: center; }
+        canvas { background: #030712; display: block; margin: 10px auto; border: 2px solid #f43f5e; border-radius: 12px; }
+        .btn-arcade { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); border: 1px solid #fff; color: #fff; font-weight: bold; padding: 8px; border-radius: 12px; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h5 class="fw-bold text-info">ARCADE BALL STRIKER</h5>
+    <div class="d-flex justify-content-between px-2 fw-bold" style="font-size: 13px;">
+        <div>SCORE: <span id="score">0</span></div>
+        <div class="text-warning">STAGE: <span id="stage">1/100</span></div>
+        <div class="text-danger">TIME: <span id="timer">60</span>s</div>
+    </div>
+
+    <canvas id="gameScene" width="400" height="230"></canvas>
+
+    <div class="alert alert-dark py-1 text-center" style="font-size: 12px; background: #1f2937; border: none; color: #cbd5e1; margin-bottom: 10px;">
+        <span id="missionText">Hit 50 targets to unlock Stage 2! (Progress: 0/50)</span>
+    </div>
+
+    <button class="btn-arcade" id="actionBtn" onclick="startGameSession()">START NEW GAME</button>
+</div>
+
+<script>
+    var cvs = document.getElementById('gameScene');
+    var ctx = cvs.getContext('2d');
+    var active = false, score = 0, stage = 1, time = 60, loop, clock;
+    var ball = { x: 200, y: 210, r: 8, dx: 0, dy: 0, fired: false };
+    var targets = [], mx = 200, my = 0, stageHits = 0;
+
+    cvs.addEventListener('mousemove', function(e) {
+        var r = cvs.getBoundingClientRect();
+        mx = (e.clientX - r.left) * (cvs.width / r.width);
+        my = (e.clientY - r.top) * (cvs.height / r.height);
+    });
+
+    cvs.addEventListener('click', function() {
+        if (!active || ball.fired) return;
+        var angle = Math.atan2(my - ball.y, mx - ball.x);
+        ball.dx = Math.cos(angle) * 11;
+        ball.dy = Math.sin(angle) * 11;
+        ball.fired = true;
+    });
+
+    function spawn() {
+        targets = [];
+        var colors = ['#f43f5e', '#fb923c', '#22d3ee', '#c084fc', '#4ade80'];
+        var count = 5; // Fixed 5 bouncing balls at a time on screen
+        var speed = 1 + (stage * 0.03);
+        for (var i = 0; i < count; i++) {
+            targets.push({
+                x: Math.random() * (cvs.width - 40) + 20, y: Math.random() * 70 + 30, r: 10,
+                color: colors[i % colors.length], dx: (Math.random() - 0.5) * 4 * speed, dy: (Math.random() - 0.5) * 2 * speed
+            });
+        }
+    }
+
+    function startGameSession() {
+        if (active) return;
+        active = true; score = 0; stage = 1; time = 60; stageHits = 0;
+        document.getElementById('actionBtn').disabled = true;
+        document.getElementById('actionBtn').innerText = "GAME LIVE";
+        document.getElementById('score').innerText = score;
+        document.getElementById('stage').innerText = "1/100";
+        document.getElementById('missionText').innerText = "Hit 50 targets to unlock Stage 2! (Progress: 0/50)";
+        
+        spawn();
+        ball.x = 200; ball.y = 210; ball.fired = false;
+        loop = setInterval(drawFrame, 1000 / 60);
+        clock = setInterval(function() {
+            time--; document.getElementById('timer').innerText = time;
+            if (time <= 0) {
+                active = false; clearInterval(loop); clearInterval(clock);
+                document.getElementById('actionBtn').disabled = false;
+                document.getElementById('actionBtn').innerText = "START NEW GAME";
+                alert("Game Over! Stage Reached: " + stage + "\nTotal Score: " + score);
+            }
+        }, 1000);
+    }
+
+    function drawFrame() {
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        if (!ball.fired) {
+            ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.moveTo(ball.x, ball.y); ctx.lineTo(mx, my);
+            ctx.strokeStyle = 'rgba(56,189,248,0.5)'; ctx.stroke(); ctx.setLineDash([]);
+        } else {
+            ball.x += ball.dx; ball.y += ball.dy;
+            if (ball.x - ball.r < 0 || ball.x + ball.r > cvs.width) ball.dx *= -1;
+            if (ball.y - ball.r < 0) ball.dy *= -1;
+            if (ball.y + ball.r > cvs.height) { ball.x = 200; ball.y = 210; ball.fired = false; }
+        }
+        ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill();
+
+        for (var i = 0; i < targets.length; i++) {
+            var t = targets[i]; t.x += t.dx; t.y += t.dy;
+            if (t.x - t.r < 0 || t.x + t.r > cvs.width) t.dx *= -1;
+            if (t.y - t.r < 0 || t.y + t.r > 120) t.dy *= -1;
+            ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI*2); ctx.fillStyle = t.color; ctx.fill();
+
+            if (Math.sqrt(Math.pow(ball.x - t.x, 2) + Math.pow(ball.y - t.y, 2)) < ball.r + t.r) {
+                targets.splice(i, 1); score++; stageHits++;
+                document.getElementById('score').innerText = score;
+                ball.dy *= -0.7;
+                time = Math.min(99, time + 2); // Dynamic +2s bonus time per hit
+
+                // Target condition tracker
+                var requiredHits = (stage === 1) ? 50 : 4; 
+                
+                if (stage === 1) {
+                    document.getElementById('missionText').innerText = "Hit 50 targets to unlock Stage 2! (Progress: " + stageHits + "/50)";
+                }
+
+                if (stageHits >= requiredHits) {
+                    if (stage < 100) {
+                        stage++; stageHits = 0;
+                        document.getElementById('stage').innerText = stage + "/100";
+                        var nextGoal = (stage === 2) ? 4 : 4;
+                        document.getElementById('missionText').innerText = "Hit " + nextGoal + " targets to unlock Stage " + (stage + 1) + "!";
+                        time = Math.min(99, time + 15); // Extra stage reward time
+                        spawn();
+                    } else {
+                        active = false; clearInterval(loop); clearInterval(clock);
+                        document.getElementById('actionBtn').disabled = false;
+                        document.getElementById('actionBtn').innerText = "START NEW GAME";
+                        alert("🎉 Incredible! You cleared all 100 Stages!");
+                        break;
+                    }
+                }
+                if (targets.length === 0) spawn();
+                break;
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
