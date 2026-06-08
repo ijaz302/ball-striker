@@ -26,6 +26,7 @@
             text-align: center;
             position: relative;
             box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+            width: 540px;
         }
         canvas { 
             background: #030712; 
@@ -106,8 +107,7 @@
         <h4 class="text-warning mb-2">LEVEL CHALLENGE QUIZ</h4>
         <p class="text-muted small">Answer 5 questions correctly to unlock the next level!</p>
         <h5 id="quiz-question" class="my-3 text-center">Question goes here?</h5>
-        <div id="quiz-options" class="d-flex flex-column align-items-center w-100">
-            </div>
+        <div id="quiz-options" class="d-flex flex-column align-items-center w-100"></div>
         <div id="quiz-progress" class="mt-3 text-info fw-bold">Question: 1/5</div>
     </div>
 </div>
@@ -169,38 +169,45 @@
     }
 
     function updateHUD() {
-        scoreText.innerText = score;
-        levelText.innerText = currentLevel;
-        stageText.innerText = currentStage;
-        timeText.innerText = timeLeft;
+        if(scoreText) scoreText.innerText = score;
+        if(levelText) levelText.innerText = currentLevel;
+        if(stageText) stageText.innerText = currentStage;
+        if(timeText) timeText.innerText = timeLeft;
+        
         let req = getTargetForStage(currentStage);
-        targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
+        if(targetMsg) {
+            targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
+        }
     }
 
     // Dynamic Instructions Panel
     function showInstructions() {
-        instScreen.classList.remove('hidden');
+        if(instScreen) instScreen.classList.remove('hidden');
         if (currentLevel === 1) {
-            instTitle.innerText = "LEVEL 1: STANDARD MODE";
-            instText.innerText = "Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!";
+            if(instTitle) instTitle.innerText = "LEVEL 1: STANDARD MODE";
+            if(instText) instText.innerText = "Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!";
         } else if (currentLevel === 2) {
-            instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
-            instText.innerText = "The physics have changed! Balls will now bounce from the left and right sides. Strike them quickly!";
+            if(instTitle) instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
+            if(instText) instText.innerText = "The physics have changed! Balls will now bounce from the left and right sides. Strike them quickly!";
         } else {
-            instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
-            instText.innerText = "Ball speeds are faster and movements are zigzag! Keep your focus sharp.";
+            if(instTitle) instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
+            if(instText) instText.innerText = "Ball speeds are faster and movements are zigzag! Keep your focus sharp.";
         }
     }
 
-    instCloseBtn.addEventListener('click', () => {
-        instScreen.classList.add('hidden');
-        if(!isGameRunning) initGame();
-    });
+    if(instCloseBtn) {
+        instCloseBtn.addEventListener('click', () => {
+            if(instScreen) instScreen.classList.add('hidden');
+            initGame();
+        });
+    }
 
-    startBtn.addEventListener('click', () => {
-        if(isGameRunning) resetGameSystem();
-        showInstructions();
-    });
+    if(startBtn) {
+        startBtn.addEventListener('click', () => {
+            resetGameSystem();
+            showInstructions();
+        });
+    }
 
     function initGame() {
         isGameRunning = true;
@@ -217,7 +224,7 @@
         timerInterval = setInterval(() => {
             if (timeLeft > 0) {
                 timeLeft--;
-                timeText.innerText = timeLeft;
+                if(timeText) timeText.innerText = timeLeft;
             } else {
                 gameOver(false);
             }
@@ -305,7 +312,7 @@
                 
                 balls.splice(index, 1);
                 score++;
-                scoreText.innerText = score;
+                if(scoreText) scoreText.innerText = score;
                 
                 let required = getTargetForStage(currentStage);
                 if (score >= required) {
@@ -331,7 +338,7 @@
 
     // --- QUIZ MANAGEMENT SYSTEM ---
     function showQuizModal() {
-        quizScreen.classList.remove('hidden');
+        if(quizScreen) quizScreen.classList.remove('hidden');
         currentQuizIndex = 0;
         correctAnswersCount = 0;
         loadQuizQuestion();
@@ -339,7 +346,63 @@
 
     function loadQuizQuestion() {
         if (currentQuizIndex < 5) {
-            quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
+            if(quizProgressText) quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
             let currentQ = quizData[currentQuizIndex];
-            quizQuestion.innerText = currentQ.q;
-            quizOptionsContainer.innerHTML =
+            if(quizQuestion) quizQuestion.innerText = currentQ.q;
+            if(quizOptionsContainer) {
+                quizOptionsContainer.innerHTML = '';
+                currentQ.a.forEach((opt, idx) => {
+                    let btn = document.createElement('button');
+                    btn.className = 'quiz-option';
+                    btn.innerText = opt;
+                    btn.onclick = () => handleQuizAnswer(idx);
+                    quizOptionsContainer.appendChild(btn);
+                });
+            }
+        } else {
+            evaluateQuizResult();
+        }
+    }
+
+    function handleQuizAnswer(selectedIndex) {
+        if (selectedIndex === quizData[currentQuizIndex].c) {
+            correctAnswersCount++;
+        }
+        currentQuizIndex++;
+        loadQuizQuestion();
+    }
+
+    function evaluateQuizResult() {
+        if (correctAnswersCount === 5) {
+            alert(`Excellent! All answers are correct. Level ${currentLevel + 1} is now unlocked!`);
+            if(quizScreen) quizScreen.classList.add('hidden');
+            currentLevel++;
+            currentStage = 1;
+            showInstructions();
+        } else {
+            alert(`Game Over! You scored ${correctAnswersCount}/5. You need a perfect score to pass this level. Try again!`);
+            currentQuizIndex = 0;
+            correctAnswersCount = 0;
+            loadQuizQuestion();
+        }
+    }
+
+    function gameOver(won) {
+        isGameRunning = false;
+        clearInterval(gameInterval);
+        clearInterval(timerInterval);
+        alert(won ? "Fantastic! You nailed it!" : "Game Over! Time ran out. Try again!");
+        resetGameSystem();
+    }
+
+    function resetGameSystem() {
+        score = 0;
+        currentStage = 1;
+        timeLeft = 60;
+        updateHUD();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+</script>
+
+</body>
+</html>
