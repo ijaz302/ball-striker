@@ -48,7 +48,7 @@
             transform: scale(1.05);
             box-shadow: 0 0 10px #38bdf8;
         }
-        /* Quiz aur Instructions Overlay Styles */
+        /* Overlay System */
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -98,13 +98,13 @@
 
     <div id="instructions-screen" class="overlay">
         <h4 id="inst-title" class="text-info mb-3">LEVEL 1: HOW TO PLAY</h4>
-        <p id="inst-text" class="px-4 text-center">Balls upar se neeche aayengi. Apne pad ko screen ke neeche left/right move karein aur balls ko strike karein!</p>
-        <button id="inst-close-btn" class="btn btn-arcade mt-3">KHELEN SHURU KAREIN</button>
+        <p id="inst-text" class="px-4 text-center">Balls will drop from the top. Use Arrow keys to move the paddle left/right and hit the targets!</p>
+        <button id="inst-close-btn" class="btn btn-arcade mt-3">START GAME</button>
     </div>
 
     <div id="quiz-screen" class="overlay hidden">
         <h4 class="text-warning mb-2">LEVEL CHALLENGE QUIZ</h4>
-        <p class="text-muted small">Agla Level Unlock karne ke liye 5 sahi jawab dein!</p>
+        <p class="text-muted small">Answer 5 questions correctly to unlock the next level!</p>
         <h5 id="quiz-question" class="my-3 text-center">Question goes here?</h5>
         <div id="quiz-options" class="d-flex flex-column align-items-center w-100">
             </div>
@@ -143,32 +143,31 @@
     let timerInterval = null;
     let isGameRunning = false;
 
-    // Player/Paddle Properties
+    // Player Configuration
     let player = { x: 210, y: 330, width: 80, height: 15, speed: 8, dir: 'bottom' };
     let balls = [];
     let keys = {};
 
-    // Quiz Questions Data Bank
+    // Quiz Bank
     const quizData = [
-        { q: "HTML ka poora naam kya hai?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
-        { q: "CSS kis liye istemal hoti hai?", a: ["Database ke liye", "Website Design aur Styling ke liye", "Logic likhne ke liye"], c: 1 },
-        { q: "JavaScript mein variable banane ka sahi tareeqa kya hai?", a: ["v name;", "let name;", "variable name;"], c: 1 },
-        { q: "In mein se kaun sa programming language ka concept hai?", a: ["Loops", "Styles", "Tags"], c: 0 },
-        { q: "GitHub kis kaam aata hai?", a: ["Code host aur track karne ke liye", "Video edit karne ke liye", "Domain khareedne ke liye"], c: 0 }
+        { q: "What does HTML stand for?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
+        { q: "What is the primary purpose of CSS?", a: ["Database management", "Website designing and styling", "Handling logical conditions"], c: 1 },
+        { q: "Which is the correct way to declare a variable in modern JavaScript?", a: ["v name;", "let name;", "variable name;"], c: 1 },
+        { q: "Which of the following is a core programming concept?", a: ["Loops", "Styles", "Tags"], c: 0 },
+        { q: "What is the main purpose of GitHub?", a: ["To host and track code", "To edit graphic videos", "To purchase web domains"], c: 0 }
     ];
     let currentQuizIndex = 0;
     let correctAnswersCount = 0;
 
-    // Controls setup
+    // Control Keybinds
     window.addEventListener('keydown', e => keys[e.code] = true);
     window.addEventListener('keyup', e => keys[e.code] = false);
 
-    // Dynamic Target Formula: Start 15, har stage +5
+    // Target Calculator Formula
     function getTargetForStage(stage) {
         return 15 + ((stage - 1) * 5);
     }
 
-    // Update Text Display
     function updateHUD() {
         scoreText.innerText = score;
         levelText.innerText = currentLevel;
@@ -178,18 +177,18 @@
         targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
     }
 
-    // Instructions handler
+    // Dynamic Instructions Panel
     function showInstructions() {
         instScreen.classList.remove('hidden');
         if (currentLevel === 1) {
             instTitle.innerText = "LEVEL 1: STANDARD MODE";
-            instText.innerText = "Balls upar se neeche girenge. Arrow keys se bottom pad ko chalayein aur strike karein!";
+            instText.innerText = "Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!";
         } else if (currentLevel === 2) {
             instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
-            instText.innerText = "Ab physics badal gayi hai! Balls left aur right se bounce ho kar aayengi. Tezi se strike karein!";
+            instText.innerText = "The physics have changed! Balls will now bounce from the left and right sides. Strike them quickly!";
         } else {
             instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
-            instText.innerText = "Balls ki speed zigzag hogi aur direction unpredictable hogi! Focus bana kar rakhein.";
+            instText.innerText = "Ball speeds are faster and movements are zigzag! Keep your focus sharp.";
         }
     }
 
@@ -198,7 +197,6 @@
         if(!isGameRunning) initGame();
     });
 
-    // Start Game Initialization
     startBtn.addEventListener('click', () => {
         if(isGameRunning) resetGameSystem();
         showInstructions();
@@ -210,3 +208,138 @@
         timeLeft = 60;
         balls = [];
         updateHUD();
+        adjustPlayerDirection();
+
+        if(gameInterval) clearInterval(gameInterval);
+        if(timerInterval) clearInterval(timerInterval);
+
+        gameInterval = setInterval(gameLoop, 1000/60);
+        timerInterval = setInterval(() => {
+            if (timeLeft > 0) {
+                timeLeft--;
+                timeText.innerText = timeLeft;
+            } else {
+                gameOver(false);
+            }
+        }, 1000);
+    }
+
+    function adjustPlayerDirection() {
+        if (currentLevel === 1) {
+            player.dir = 'bottom'; player.x = 210; player.y = 330; player.width = 80; player.height = 15;
+        } else if (currentLevel === 2) {
+            player.dir = 'center'; player.x = 210; player.y = 165; player.width = 80; player.height = 15;
+        } else {
+            player.dir = 'top'; player.x = 210; player.y = 10; player.width = 80; player.height = 15;
+        }
+    }
+
+    function spawnBall() {
+        if (Math.random() < 0.03) {
+            let ballX = Math.random() * (canvas.width - 20) + 10;
+            let ballY = 0;
+            let speedX = (Math.random() - 0.5) * 4;
+            let speedY = Math.random() * 2 + (currentLevel * 0.5) + 1;
+
+            if (currentLevel === 2) {
+                ballX = Math.random() < 0.5 ? 0 : canvas.width;
+                ballY = Math.random() * (canvas.height - 50) + 20;
+                speedX = ballX === 0 ? (Math.random() * 3 + 2) : -(Math.random() * 3 + 2);
+                speedY = (Math.random() - 0.5) * 4;
+            }
+
+            balls.push({ x: ballX, y: ballY, vx: speedX, vy: speedY, radius: 10 });
+        }
+    }
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        spawnBall();
+        updatePlayerMovement();
+        drawPlayer();
+        updateAndDrawBalls();
+        checkCollisions();
+    }
+
+    function updatePlayerMovement() {
+        if (player.dir === 'bottom' || player.dir === 'top' || player.dir === 'center') {
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+        }
+        if (currentLevel > 2) {
+            if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+            if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
+        }
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(player.x, player.y, player.width, player.height);
+    }
+
+    function updateAndDrawBalls() {
+        balls.forEach((ball, index) => {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.vx *= -1;
+            
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#f43f5e';
+            ctx.fill();
+            ctx.closePath();
+
+            if (ball.y > canvas.height || ball.y < -20) {
+                balls.splice(index, 1);
+            }
+        });
+    }
+
+    function checkCollisions() {
+        balls.forEach((ball, index) => {
+            if (ball.x > player.x && ball.x < player.x + player.width &&
+                ball.y > player.y && ball.y < player.y + player.height) {
+                
+                balls.splice(index, 1);
+                score++;
+                scoreText.innerText = score;
+                
+                let required = getTargetForStage(currentStage);
+                if (score >= required) {
+                    advanceStage();
+                }
+            }
+        });
+    }
+
+    function advanceStage() {
+        clearInterval(gameInterval);
+        clearInterval(timerInterval);
+        
+        if (currentStage < 50) {
+            currentStage++;
+            alert(`Congratulations! You have reached Stage ${currentStage}.`);
+            initGame();
+        } else {
+            isGameRunning = false;
+            showQuizModal();
+        }
+    }
+
+    // --- QUIZ MANAGEMENT SYSTEM ---
+    function showQuizModal() {
+        quizScreen.classList.remove('hidden');
+        currentQuizIndex = 0;
+        correctAnswersCount = 0;
+        loadQuizQuestion();
+    }
+
+    function loadQuizQuestion() {
+        if (currentQuizIndex < 5) {
+            quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
+            let currentQ = quizData[currentQuizIndex];
+            quizQuestion.innerText = currentQ.q;
+            quizOptionsContainer.innerHTML =
