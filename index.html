@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="monetag" content="da1bc57303c72bdf27c92b2707207c4bc">
-    <title>Arcade Striker - Ultimate Challenge</title>
+    <title>Arcade Striker - Match 3 Bomb Challenge</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { 
@@ -52,6 +52,24 @@
             transform: scale(1.05);
             box-shadow: 0 0 10px #38bdf8;
         }
+        .combo-box {
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            border-radius: 8px;
+            padding: 5px;
+            font-size: 14px;
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .combo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
         /* Overlay System */
         .overlay {
             position: absolute;
@@ -86,7 +104,7 @@
 <body>
 
 <div class="game-container">
-    <h3 style="color: #38bdf8; letter-spacing: 1px;">ARCADE BALL STRIKER</h3>
+    <h3 style="color: #38bdf8; letter-spacing: 1px;">ARCADE MATCH-3 STRIKER</h3>
     
     <div class="d-flex justify-content-around fw-bold my-2">
         <div>SCORE: <span id="score" style="color: #10b981;">0</span></div>
@@ -95,14 +113,26 @@
         <div class="text-danger">TIME: <span id="time">60</span>s</div>
     </div>
 
+    <div class="my-1 text-center">
+        <div class="combo-box fw-bold">
+            <span>Combo Streak:</span>
+            <div id="combo-container" class="d-flex gap-1 align-items-center">
+                <span class="text-muted small">Hit balls to start a match!</span>
+            </div>
+        </div>
+    </div>
+
     <canvas id="gameCanvas" width="500" height="350"></canvas>
 
-    <div id="target-msg" class="text-info my-2 fw-bold">Hit 15 targets to unlock Stage 2!</div>
+    <div id="target-msg" class="text-info my-2 fw-bold">Hit 10 targets to unlock Stage 2!</div>
     <button id="start-btn" class="btn btn-arcade my-2" onclick="forceStartNewGame()">START NEW GAME</button>
 
     <div id="instructions-screen" class="overlay">
-        <h4 id="inst-title" class="text-info mb-3">LEVEL 1: HOW TO PLAY</h4>
-        <p id="inst-text" class="px-4 text-center">Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!</p>
+        <h4 id="inst-title" class="text-info mb-3">LEVEL 1: COLOR MATCH & TIME BOMBS</h4>
+        <p id="inst-text" class="px-4 text-center">
+            1. Balls par 5s ka timer chal raha hai, unhe fatne se pehle hit karein!<br>
+            2. Ek sath **3 same color** ki balls back-to-back hit karne par big bonus points milenge!
+        </p>
         <button id="inst-close-btn" class="btn btn-arcade mt-3" onclick="forceCloseInstructions()">START GAME</button>
     </div>
 
@@ -116,9 +146,8 @@
 </div>
 
 <script>
-    // Global Accessors
     let canvas, ctx;
-    let scoreText, levelText, stageText, timeText, targetMsg;
+    let scoreText, levelText, stageText, timeText, targetMsg, comboContainer;
     let instScreen, instTitle, instText, quizScreen, quizQuestion, quizOptionsContainer, quizProgressText;
 
     let score = 0;
@@ -129,9 +158,19 @@
     let isGameRunning = false;
     let animationFrameId = null;
 
-    let player = { x: 210, y: 320, width: 90, height: 15, speed: 7, dir: 'bottom' };
+    let player = { x: 210, y: 320, width: 100, height: 15, speed: 8, dir: 'bottom' };
     let balls = [];
+    let explosions = [];
     let keys = {};
+    
+    // Track last hit ball colors for Match-3
+    let hitStreakColors = []; 
+
+    const ballColors = [
+        { name: 'Red', hex: '#f43f5e' },
+        { name: 'Blue', hex: '#3b82f6' },
+        { name: 'Green', hex: '#10b981' }
+    ];
 
     const quizData = [
         { q: "What does HTML stand for?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
@@ -152,6 +191,7 @@
         stageText = document.getElementById('stage-display');
         timeText = document.getElementById('time');
         targetMsg = document.getElementById('target-msg');
+        comboContainer = document.getElementById('combo-container');
         
         instScreen = document.getElementById('instructions-screen');
         instTitle = document.getElementById('inst-title');
@@ -173,14 +213,13 @@
         initGame();
     }
 
-    // Triggered focus to activate arrow movements instantly
     function forceStartNewGame() {
         resetGameSystem();
         showInstructions();
     }
 
     function getTargetForStage(stage) {
-        return 10 + ((stage - 1) * 3); // Light scaling for fast stage completion
+        return 10 + ((stage - 1) * 4); 
     }
 
     function updateHUD() {
@@ -192,26 +231,34 @@
         let req = getTargetForStage(currentStage);
         if(targetMsg) {
             if (currentStage < 10) {
-                targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
+                targetMsg.innerText = `Hit/Match ${req} points to unlock Stage ${currentStage + 1}!`;
             } else {
-                targetMsg.innerText = `Hit ${req} targets to unlock Level Quiz Challenge!`;
+                targetMsg.innerText = `Hit/Match ${req} points to unlock Level Quiz Challenge!`;
             }
         }
+        renderComboUI();
+    }
+
+    function renderComboUI() {
+        if(!comboContainer) return;
+        if(hitStreakColors.length === 0) {
+            comboContainer.innerHTML = '<span class="text-muted small">Hit 3 of same color!</span>';
+            return;
+        }
+        comboContainer.innerHTML = '';
+        hitStreakColors.forEach(colorHex => {
+            let dot = document.createElement('div');
+            dot.className = 'combo-dot';
+            dot.style.backgroundColor = colorHex;
+            dot.style.boxShadow = `0 0 5px ${colorHex}`;
+            comboContainer.appendChild(dot);
+        });
     }
 
     function showInstructions() {
         const box = document.getElementById('instructions-screen');
         if(box) box.classList.remove('hidden');
-        if (currentLevel === 1) {
-            if(instTitle) instTitle.innerText = "LEVEL 1: STANDARD MODE";
-            if(instText) instText.innerText = "Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!";
-        } else if (currentLevel === 2) {
-            if(instTitle) instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
-            if(instText) instText.innerText = "The physics have changed! Balls will now bounce from the left and right sides. Strike them quickly!";
-        } else {
-            if(instTitle) instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
-            if(instText) instText.innerText = "Ball speeds are faster and movements are zigzag! Keep your focus sharp.";
-        }
+        if(instTitle) instTitle.innerText = `LEVEL ${currentLevel}: MATCH-3 & TIMER BOMBS`;
     }
 
     function initGame() {
@@ -219,6 +266,8 @@
         score = 0;
         timeLeft = 60;
         balls = [];
+        explosions = [];
+        hitStreakColors = [];
         keys = {}; 
         updateHUD();
         adjustPlayerDirection();
@@ -228,6 +277,20 @@
             if (timeLeft > 0 && isGameRunning) {
                 timeLeft--;
                 if(timeText) timeText.innerText = timeLeft;
+
+                // Game Ball internal timer updates every second
+                for (let i = balls.length - 1; i >= 0; i--) {
+                    balls[i].timer--;
+                    if(balls[i].timer <= 0) {
+                        // Create bomb blast particle logic
+                        explosions.push({x: balls[i].x, y: balls[i].y, radius: balls[i].radius, maxRadius: 35, alpha: 1});
+                        balls.splice(i, 1);
+                        // Penalty for letting bomb explode
+                        score = Math.max(0, score - 1);
+                        if(scoreText) scoreText.innerText = score;
+                    }
+                }
+
             } else if (timeLeft <= 0) {
                 gameOver(false);
             }
@@ -238,33 +301,32 @@
     }
 
     function adjustPlayerDirection() {
-        if (currentLevel === 1) {
-            player.dir = 'bottom'; player.x = 205; player.y = 320; player.width = 90; player.height = 15;
-        } else if (currentLevel === 2) {
-            player.dir = 'center'; player.x = 205; player.y = 165; player.width = 90; player.height = 15;
-        } else {
-            player.dir = 'top'; player.x = 205; player.y = 15; player.width = 90; player.height = 15;
-        }
+        player.dir = 'bottom'; player.x = 200; player.y = 320; player.width = 100; player.height = 15;
     }
 
     function spawnBall() {
         if (!isGameRunning) return;
-        if (balls.length < (2 + currentLevel) && Math.random() < 0.02) {
-            let ballX = Math.random() * (canvas.width - 30) + 15;
+        
+        // Increased concurrent balls limit for a rich action view
+        if (balls.length < (5 + currentLevel * 2) && Math.random() < 0.04) {
+            let ballX = Math.random() * (canvas.width - 40) + 20;
             let ballY = 5;
-            let speedX = (Math.random() - 0.5) * 3;
-            let speedY = Math.random() * 1.5 + 2;
+            let speedX = (Math.random() - 0.5) * 2.5;
+            let speedY = Math.random() * 1.2 + 1.5; 
 
-            if (currentLevel === 2) {
-                ballX = Math.random() < 0.5 ? 5 : canvas.width - 5;
-                ballY = Math.random() * (canvas.height - 60) + 30;
-                speedX = ballX === 5 ? (Math.random() * 2 + 2) : -(Math.random() * 2 + 2);
-                speedY = (Math.random() - 0.5) * 2;
-            } else if (currentLevel > 2) {
-                speedX = (Math.random() - 0.5) * 5;
-            }
+            // Pick randomized color object
+            let randomColorObj = ballColors[Math.floor(Math.random() * ballColors.length)];
 
-            balls.push({ x: ballX, y: ballY, vx: speedX, vy: speedY, radius: 8 });
+            balls.push({ 
+                x: ballX, 
+                y: ballY, 
+                vx: speedX, 
+                vy: speedY, 
+                radius: 12, // slightly bigger to show the timer digits inside
+                colorName: randomColorObj.name,
+                colorHex: randomColorObj.hex,
+                timer: 5 // 5 Seconds countdown timer bomb
+            });
         }
     }
 
@@ -276,6 +338,7 @@
         updatePlayerMovement();
         drawPlayer();
         updateAndDrawBalls();
+        drawExplosions();
         checkCollisions();
 
         animationFrameId = requestAnimationFrame(gameLoop);
@@ -284,10 +347,6 @@
     function updatePlayerMovement() {
         if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
         if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-        if (currentLevel > 2) {
-            if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-            if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
-        }
     }
 
     function drawPlayer() {
@@ -304,21 +363,55 @@
             ball.x += ball.vx;
             ball.y += ball.vy;
 
+            // Side wall bounce
             if (ball.x - ball.radius <= 0 || ball.x + ball.radius >= canvas.width) {
                 ball.vx *= -1;
             }
-            if (currentLevel === 2 && (ball.y - ball.radius <= 0 || ball.y + ball.radius >= canvas.height)) {
-                ball.vy *= -1;
-            }
             
+            // Draw Ball Outer Circle
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = '#f43f5e';
+            ctx.fillStyle = ball.colorHex;
             ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
             ctx.closePath();
 
-            if (ball.y > canvas.height + 20 || ball.y < -20 || ball.x < -20 || ball.x > canvas.width + 20) {
+            // Render embedded countdown numeric timer inside the ball
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ball.timer, ball.x, ball.y);
+
+            // Natural screen exit clean wrapper
+            if (ball.y > canvas.height + 20) {
                 balls.splice(i, 1);
+            }
+        }
+    }
+
+    function drawExplosions() {
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            let exp = explosions[i];
+            exp.radius += 1.5;
+            exp.alpha -= 0.04;
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, exp.alpha);
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText("BOOM!", exp.x, exp.y - 5);
+            ctx.restore();
+
+            if (exp.alpha <= 0 || exp.radius >= exp.maxRadius) {
+                explosions.splice(i, 1);
             }
         }
     }
@@ -331,9 +424,32 @@
                 ball.y + ball.radius > player.y && 
                 ball.y - ball.radius < player.y + player.height) {
                 
+                // Add color sequence structure evaluation
+                hitStreakColors.push(ball.colorHex);
                 balls.splice(i, 1);
-                score++;
-                if(scoreText) scoreText.innerText = score;
+                
+                // standard hit reward points
+                score += 1; 
+
+                // Match-3 sequence checker evaluation logic
+                if (hitStreakColors.length >= 3) {
+                    let lastIdx = hitStreakColors.length - 1;
+                    if (hitStreakColors[lastIdx] === hitStreakColors[lastIdx - 1] && 
+                        hitStreakColors[lastIdx] === hitStreakColors[lastIdx - 2]) {
+                        
+                        // Blast Match detected! Mega points reward
+                        score += 5; 
+                        hitStreakColors = []; // clear current streak buffer chain
+                        alert("COMBO BLAST! 3 Same Colors Matched (+5 Bonus Points) 🎉");
+                    }
+                }
+
+                // Maintain clean cap for streak rendering dot bars
+                if (hitStreakColors.length > 4) {
+                    hitStreakColors.shift();
+                }
+
+                updateHUD();
                 
                 let required = getTargetForStage(currentStage);
                 if (score >= required) {
@@ -424,6 +540,8 @@
         currentStage = 1;
         timeLeft = 60;
         balls = [];
+        explosions = [];
+        hitStreakColors = [];
         updateHUD();
         if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
