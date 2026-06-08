@@ -1,147 +1,212 @@
 <!DOCTYPE html>
 <html>
-<head> 
+<head>
     <meta charset="UTF-8">
-    <meta name="monetag" content="da1bc57303c72bdf27c9b2707207c4bc">
-    <title>Arcade Striker - 50 Balls Stage 1</title> 
+    <meta name="monetag" content="da1bc57303c72bdf27c92b2707207c4bc">
+    <title>Arcade Striker - Ultimate Challenge</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #090d16; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .game-container { background: #111827; border: 2px solid #38bdf8; border-radius: 20px; padding: 15px; max-width: 450px; width: 100%; text-align: center; }
-        canvas { background: #030712; display: block; margin: 10px auto; border: 2px solid #f43f5e; border-radius: 12px; }
-        .btn-arcade { background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); border: 1px solid #fff; color: #fff; font-weight: bold; padding: 8px; border-radius: 12px; width: 100%; }
+        body { 
+            background: #090d16; 
+            color: #fff; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .game-container { 
+            background: #111827; 
+            border: 2px solid #38bdf8; 
+            border-radius: 20px; 
+            padding: 15px; 
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+        }
+        canvas { 
+            background: #030712; 
+            display: block; 
+            margin: 10px auto; 
+            border: 2px solid #0284c7; 
+            border-radius: 10px;
+            cursor: crosshair;
+        }
+        .btn-arcade { 
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); 
+            border: 1px solid #fff; 
+            color: white;
+            font-weight: bold;
+            padding: 10px 25px;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+        .btn-arcade:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px #38bdf8;
+        }
+        /* Quiz aur Instructions Overlay Styles */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 7, 18, 0.95);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        .hidden { display: none !important; }
+        .quiz-option {
+            width: 80%;
+            margin: 5px 0;
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: left;
+            transition: 0.2s;
+        }
+        .quiz-option:hover {
+            background: #374151;
+            border-color: #38bdf8;
+        }
     </style>
 </head>
 <body>
 
 <div class="game-container">
-    <h5 class="fw-bold text-info">ARCADE BALL STRIKER</h5>
-    <div class="d-flex justify-content-between px-2 fw-bold" style="font-size: 13px;">
-        <div>SCORE: <span id="score">0</span></div>
-        <div class="text-warning">STAGE: <span id="stage">1/100</span></div>
-        <div class="text-danger">TIME: <span id="timer">60</span>s</div>
+    <h3 style="color: #38bdf8; letter-spacing: 1px;">ARCADE BALL STRIKER</h3>
+    
+    <div class="d-flex justify-content-around fw-bold my-2">
+        <div>SCORE: <span id="score" style="color: #10b981;">0</span></div>
+        <div class="text-warning">LEVEL: <span id="level-display">1</span>/50</div>
+        <div class="text-warning">STAGE: <span id="stage-display">1</span>/50</div>
+        <div class="text-danger">TIME: <span id="time">60</span>s</div>
     </div>
 
-    <canvas id="gameScene" width="400" height="230"></canvas>
+    <canvas id="gameCanvas" width="500" height="350"></canvas>
 
-    <div class="alert alert-dark py-1 text-center" style="font-size: 12px; background: #1f2937; border: none; color: #cbd5e1; margin-bottom: 10px;">
-        <span id="missionText">Hit 50 targets to unlock Stage 2! (Progress: 0/50)</span>
+    <div id="target-msg" class="text-info my-2 fw-bold">Hit 15 targets to unlock Stage 2!</div>
+    <button id="start-btn" class="btn btn-arcade my-2">START NEW GAME</button>
+
+    <div id="instructions-screen" class="overlay">
+        <h4 id="inst-title" class="text-info mb-3">LEVEL 1: HOW TO PLAY</h4>
+        <p id="inst-text" class="px-4 text-center">Balls upar se neeche aayengi. Apne pad ko screen ke neeche left/right move karein aur balls ko strike karein!</p>
+        <button id="inst-close-btn" class="btn btn-arcade mt-3">KHELEN SHURU KAREIN</button>
     </div>
 
-    <button class="btn-arcade" id="actionBtn" onclick="startGameSession()">START NEW GAME</button>
+    <div id="quiz-screen" class="overlay hidden">
+        <h4 class="text-warning mb-2">LEVEL CHALLENGE QUIZ</h4>
+        <p class="text-muted small">Agla Level Unlock karne ke liye 5 sahi jawab dein!</p>
+        <h5 id="quiz-question" class="my-3 text-center">Question goes here?</h5>
+        <div id="quiz-options" class="d-flex flex-column align-items-center w-100">
+            </div>
+        <div id="quiz-progress" class="mt-3 text-info fw-bold">Question: 1/5</div>
+    </div>
 </div>
 
 <script>
-    var cvs = document.getElementById('gameScene');
-    var ctx = cvs.getContext('2d');
-    var active = false, score = 0, stage = 1, time = 60, loop, clock;
-    var ball = { x: 200, y: 210, r: 8, dx: 0, dy: 0, fired: false };
-    var targets = [], mx = 200, my = 0, stageHits = 0;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-    cvs.addEventListener('mousemove', function(e) {
-        var r = cvs.getBoundingClientRect();
-        mx = (e.clientX - r.left) * (cvs.width / r.width);
-        my = (e.clientY - r.top) * (cvs.height / r.height);
-    });
+    // UI Elements
+    const scoreText = document.getElementById('score');
+    const levelText = document.getElementById('level-display');
+    const stageText = document.getElementById('stage-display');
+    const timeText = document.getElementById('time');
+    const targetMsg = document.getElementById('target-msg');
+    const startBtn = document.getElementById('start-btn');
+    
+    // Screens
+    const instScreen = document.getElementById('instructions-screen');
+    const instTitle = document.getElementById('inst-title');
+    const instText = document.getElementById('inst-text');
+    const instCloseBtn = document.getElementById('inst-close-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const quizQuestion = document.getElementById('quiz-question');
+    const quizOptionsContainer = document.getElementById('quiz-options');
+    const quizProgressText = document.getElementById('quiz-progress');
 
-    cvs.addEventListener('click', function() {
-        if (!active || ball.fired) return;
-        var angle = Math.atan2(my - ball.y, mx - ball.x);
-        ball.dx = Math.cos(angle) * 11;
-        ball.dy = Math.sin(angle) * 11;
-        ball.fired = true;
-    });
+    // Game Variables
+    let score = 0;
+    let currentStage = 1;
+    let currentLevel = 1;
+    let timeLeft = 60;
+    let gameInterval = null;
+    let timerInterval = null;
+    let isGameRunning = false;
 
-    function spawn() {
-        targets = [];
-        var colors = ['#f43f5e', '#fb923c', '#22d3ee', '#c084fc', '#4ade80'];
-        var count = 5; // Fixed 5 bouncing balls at a time on screen
-        var speed = 1 + (stage * 0.03);
-        for (var i = 0; i < count; i++) {
-            targets.push({
-                x: Math.random() * (cvs.width - 40) + 20, y: Math.random() * 70 + 30, r: 10,
-                color: colors[i % colors.length], dx: (Math.random() - 0.5) * 4 * speed, dy: (Math.random() - 0.5) * 2 * speed
-            });
-        }
+    // Player/Paddle Properties
+    let player = { x: 210, y: 330, width: 80, height: 15, speed: 8, dir: 'bottom' };
+    let balls = [];
+    let keys = {};
+
+    // Quiz Questions Data Bank
+    const quizData = [
+        { q: "HTML ka poora naam kya hai?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
+        { q: "CSS kis liye istemal hoti hai?", a: ["Database ke liye", "Website Design aur Styling ke liye", "Logic likhne ke liye"], c: 1 },
+        { q: "JavaScript mein variable banane ka sahi tareeqa kya hai?", a: ["v name;", "let name;", "variable name;"], c: 1 },
+        { q: "In mein se kaun sa programming language ka concept hai?", a: ["Loops", "Styles", "Tags"], c: 0 },
+        { q: "GitHub kis kaam aata hai?", a: ["Code host aur track karne ke liye", "Video edit karne ke liye", "Domain khareedne ke liye"], c: 0 }
+    ];
+    let currentQuizIndex = 0;
+    let correctAnswersCount = 0;
+
+    // Controls setup
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    // Dynamic Target Formula: Start 15, har stage +5
+    function getTargetForStage(stage) {
+        return 15 + ((stage - 1) * 5);
     }
 
-    function startGameSession() {
-        if (active) return;
-        active = true; score = 0; stage = 1; time = 60; stageHits = 0;
-        document.getElementById('actionBtn').disabled = true;
-        document.getElementById('actionBtn').innerText = "GAME LIVE";
-        document.getElementById('score').innerText = score;
-        document.getElementById('stage').innerText = "1/100";
-        document.getElementById('missionText').innerText = "Hit 50 targets to unlock Stage 2! (Progress: 0/50)";
-        
-        spawn();
-        ball.x = 200; ball.y = 210; ball.fired = false;
-        loop = setInterval(drawFrame, 1000 / 60);
-        clock = setInterval(function() {
-            time--; document.getElementById('timer').innerText = time;
-            if (time <= 0) {
-                active = false; clearInterval(loop); clearInterval(clock);
-                document.getElementById('actionBtn').disabled = false;
-                document.getElementById('actionBtn').innerText = "START NEW GAME";
-                alert("Game Over! Stage Reached: " + stage + "\nTotal Score: " + score);
-            }
-        }, 1000);
+    // Update Text Display
+    function updateHUD() {
+        scoreText.innerText = score;
+        levelText.innerText = currentLevel;
+        stageText.innerText = currentStage;
+        timeText.innerText = timeLeft;
+        let req = getTargetForStage(currentStage);
+        targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
     }
 
-    function drawFrame() {
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        if (!ball.fired) {
-            ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.moveTo(ball.x, ball.y); ctx.lineTo(mx, my);
-            ctx.strokeStyle = 'rgba(56,189,248,0.5)'; ctx.stroke(); ctx.setLineDash([]);
+    // Instructions handler
+    function showInstructions() {
+        instScreen.classList.remove('hidden');
+        if (currentLevel === 1) {
+            instTitle.innerText = "LEVEL 1: STANDARD MODE";
+            instText.innerText = "Balls upar se neeche girenge. Arrow keys se bottom pad ko chalayein aur strike karein!";
+        } else if (currentLevel === 2) {
+            instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
+            instText.innerText = "Ab physics badal gayi hai! Balls left aur right se bounce ho kar aayengi. Tezi se strike karein!";
         } else {
-            ball.x += ball.dx; ball.y += ball.dy;
-            if (ball.x - ball.r < 0 || ball.x + ball.r > cvs.width) ball.dx *= -1;
-            if (ball.y - ball.r < 0) ball.dy *= -1;
-            if (ball.y + ball.r > cvs.height) { ball.x = 200; ball.y = 210; ball.fired = false; }
-        }
-        ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill();
-
-        for (var i = 0; i < targets.length; i++) {
-            var t = targets[i]; t.x += t.dx; t.y += t.dy;
-            if (t.x - t.r < 0 || t.x + t.r > cvs.width) t.dx *= -1;
-            if (t.y - t.r < 0 || t.y + t.r > 120) t.dy *= -1;
-            ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI*2); ctx.fillStyle = t.color; ctx.fill();
-
-            if (Math.sqrt(Math.pow(ball.x - t.x, 2) + Math.pow(ball.y - t.y, 2)) < ball.r + t.r) {
-                targets.splice(i, 1); score++; stageHits++;
-                document.getElementById('score').innerText = score;
-                ball.dy *= -0.7;
-                time = Math.min(99, time + 2); // Dynamic +2s bonus time per hit
-
-                // Target condition tracker
-                var requiredHits = (stage === 1) ? 50 : 4; 
-                
-                if (stage === 1) {
-                    document.getElementById('missionText').innerText = "Hit 50 targets to unlock Stage 2! (Progress: " + stageHits + "/50)";
-                }
-
-                if (stageHits >= requiredHits) {
-                    if (stage < 100) {
-                        stage++; stageHits = 0;
-                        document.getElementById('stage').innerText = stage + "/100";
-                        var nextGoal = (stage === 2) ? 4 : 4;
-                        document.getElementById('missionText').innerText = "Hit " + nextGoal + " targets to unlock Stage " + (stage + 1) + "!";
-                        time = Math.min(99, time + 15); // Extra stage reward time
-                        spawn();
-                    } else {
-                        active = false; clearInterval(loop); clearInterval(clock);
-                        document.getElementById('actionBtn').disabled = false;
-                        document.getElementById('actionBtn').innerText = "START NEW GAME";
-                        alert("🎉 Incredible! You cleared all 100 Stages!");
-                        break;
-                    }
-                }
-                if (targets.length === 0) spawn();
-                break;
-            }
+            instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
+            instText.innerText = "Balls ki speed zigzag hogi aur direction unpredictable hogi! Focus bana kar rakhein.";
         }
     }
-</script>
 
-</body>
-</html>
+    instCloseBtn.addEventListener('click', () => {
+        instScreen.classList.add('hidden');
+        if(!isGameRunning) initGame();
+    });
+
+    // Start Game Initialization
+    startBtn.addEventListener('click', () => {
+        if(isGameRunning) resetGameSystem();
+        showInstructions();
+    });
+
+    function initGame() {
+        isGameRunning = true;
+        score = 0;
+        timeLeft = 60;
+        balls = [];
+        updateHUD();
