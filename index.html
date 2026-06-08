@@ -90,8 +90,8 @@
     
     <div class="d-flex justify-content-around fw-bold my-2">
         <div>SCORE: <span id="score" style="color: #10b981;">0</span></div>
-        <div class="text-warning">LEVEL: <span id="level-display">1</span>/50</div>
-        <div class="text-warning">STAGE: <span id="stage-display">1</span>/50</div>
+        <div class="text-warning">LEVEL: <span id="level-display">1</span></div>
+        <div class="text-warning">STAGE: <span id="stage-display">1</span>/10</div>
         <div class="text-danger">TIME: <span id="time">60</span>s</div>
     </div>
 
@@ -173,13 +173,14 @@
         initGame();
     }
 
+    // Triggered focus to activate arrow movements instantly
     function forceStartNewGame() {
         resetGameSystem();
         showInstructions();
     }
 
     function getTargetForStage(stage) {
-        return 15 + ((stage - 1) * 5);
+        return 10 + ((stage - 1) * 3); // Light scaling for fast stage completion
     }
 
     function updateHUD() {
@@ -190,7 +191,11 @@
         
         let req = getTargetForStage(currentStage);
         if(targetMsg) {
-            targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
+            if (currentStage < 10) {
+                targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
+            } else {
+                targetMsg.innerText = `Hit ${req} targets to unlock Level Quiz Challenge!`;
+            }
         }
     }
 
@@ -344,9 +349,9 @@
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         if(timerInterval) clearInterval(timerInterval);
         
-        if (currentStage < 50) {
+        if (currentStage < 10) {
             currentStage++;
-            alert(`Congratulations! You passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`);
+            alert(`Great Job! You passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`);
             initGame();
         } else {
             showQuizModal();
@@ -390,13 +395,13 @@
 
     function evaluateQuizResult() {
         if (correctAnswersCount === 5) {
-            alert(`Excellent! All answers are correct. Level ${currentLevel + 1} is now unlocked!`);
+            alert(`Excellent! Level ${currentLevel + 1} is now unlocked!`);
             if(quizScreen) quizScreen.classList.add('hidden');
             currentLevel++;
             currentStage = 1;
             showInstructions();
         } else {
-            alert(`Quiz Failed! You scored ${correctAnswersCount}/5. You need a perfect score. Retrying!`);
+            alert(`Quiz Failed! (${correctAnswersCount}/5 correct). Re-trying the Quiz block!`);
             currentQuizIndex = 0;
             correctAnswersCount = 0;
             loadQuizQuestion();
@@ -407,7 +412,7 @@
         isGameRunning = false;
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         if(timerInterval) clearInterval(timerInterval);
-        alert(won ? "Fantastic! You nailed it!" : "Game Over! Time ran out. Try again!");
+        alert(won ? "Fantastic!" : "Game Over! Time ran out.");
         resetGameSystem();
     }
 
