@@ -2,8 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="monetag" content="da1bc57303c72bdf27c92b2707207c4bc">
-    <title>Arcade Striker - Custom Stage Progression</title>
+    <title>Target Timer Puzzle</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { 
@@ -80,6 +79,16 @@
             background: #374151;
             border-color: #38bdf8;
         }
+        /* Custom Modern Alert Panel Box Style */
+        .custom-panel-box {
+            background: #1f2937;
+            border: 2px solid #10b981;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+            max-width: 85%;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -109,6 +118,14 @@
         <button id="inst-close-btn" class="btn btn-arcade mt-3" onclick="forceCloseInstructions()">START GAME</button>
     </div>
 
+    <div id="alert-screen" class="overlay hidden">
+        <div class="custom-panel-box">
+            <h4 id="alert-title" class="text-success mb-3">STAGE CLEAR!</h4>
+            <p id="alert-text" class="mb-4 text-light">Great Job! Ready for the next challenge?</p>
+            <button id="alert-action-btn" class="btn btn-arcade" onclick="closeCustomAlert()">CONTINUE</button>
+        </div>
+    </div>
+
     <div id="quiz-screen" class="overlay hidden">
         <h4 class="text-warning mb-2">LEVEL CHALLENGE QUIZ</h4>
         <p class="text-muted small">Answer 5 unique questions correctly to unlock the next level!</p>
@@ -122,14 +139,16 @@
     let canvas, ctx;
     let scoreText, levelText, stageText, timeText, targetMsg;
     let instScreen, instTitle, instText, quizScreen, quizQuestion, quizOptionsContainer, quizProgressText;
+    let alertScreen, alertTitle, alertText, alertActionBtn;
 
     let score = 0;
     let currentStage = 1;
     let currentLevel = 1;
-    let timeLeft = 120; // Increased total game time since stage targets are now larger
+    let timeLeft = 120; 
     let timerInterval = null;
     let isGameRunning = false;
     let animationFrameId = null;
+    let onAlertConfirmCallback = null;
 
     const rows = 8;
     const cols = 11;
@@ -233,6 +252,11 @@
         quizOptionsContainer = document.getElementById('quiz-options');
         quizProgressText = document.getElementById('quiz-progress');
 
+        alertScreen = document.getElementById('alert-screen');
+        alertTitle = document.getElementById('alert-title');
+        alertText = document.getElementById('alert-text');
+        alertActionBtn = document.getElementById('alert-action-btn');
+
         canvas.addEventListener('click', handleCanvasClick);
         updateHUD();
     });
@@ -247,7 +271,6 @@
         if(instScreen) instScreen.classList.remove('hidden');
     }
 
-    // CUSTOM LOGIC: Stage 1 is 50, and increases by 10 for every stage after that
     function getTargetForStage(stage) {
         return 50 + ((stage - 1) * 10); 
     }
@@ -268,10 +291,27 @@
         }
     }
 
+    // Modern In-Game Alert System Trigger
+    function triggerCustomAlert(title, text, actionText, callback) {
+        if(alertTitle) alertTitle.innerText = title;
+        if(alertText) alertText.innerText = text;
+        if(alertActionBtn) alertActionBtn.innerText = actionText;
+        onAlertConfirmCallback = callback;
+        if(alertScreen) alertScreen.classList.remove('hidden');
+    }
+
+    function closeCustomAlert() {
+        if(alertScreen) alertScreen.classList.add('hidden');
+        if (onAlertConfirmCallback) {
+            onAlertConfirmCallback();
+            onAlertConfirmCallback = null;
+        }
+    }
+
     function initGame() {
         isGameRunning = true;
         score = 0;
-        timeLeft = 120; // Extra time for progressive targets
+        timeLeft = 120; 
         explosions = [];
         generateStaticGrid();
         pickNewRandomTargetBall();
@@ -457,7 +497,6 @@
                     }
                 });
 
-                // Fixed point per action to keep progression completely linear and steady
                 score += 5;
                 updateHUD();
 
@@ -549,14 +588,23 @@
         
         if (currentStage < 10) {
             currentStage++;
-            alert(`Great Job! Passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`);
-            initGame();
+            // Replaced default alert with beautiful custom overlay panels
+            triggerCustomAlert(
+                "STAGE CLEAR! 🎉", 
+                `Great Job! You successfully passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`, 
+                "START NEXT STAGE", 
+                () => { initGame(); }
+            );
         } else {
-            showQuizModal();
+            triggerCustomAlert(
+                "STAGE 10 COMPLETE! 🔥", 
+                "Unbelievable skills! You have cleared all 10 stages. Now prepare for the Level Quiz challenge!", 
+                "START LEVEL QUIZ", 
+                () => { showQuizModal(); }
+            );
         }
     }
 
-    // Quiz functions remain standard to ensure flawless functionality
     function shuffleAndPickQuestions() {
         if (unusedQuizPool.length < 5) {
             unusedQuizPool = [...masterQuizBank];
@@ -607,22 +655,35 @@
     function evaluateQuizResult() {
         if (correctAnswersCount === 5) {
             if (currentLevel >= 50) {
-                alert("🎉 VICTORY! You have completed all 50 levels perfectly! 🎉");
-                resetGameSystem();
-                currentLevel = 1;
+                triggerCustomAlert(
+                    "🏆 PERFECT CHAMPION! 🏆", 
+                    "🎉 ULTIMATE VICTORY! You completed all 50 levels perfectly! Amazing!", 
+                    "PLAY AGAIN", 
+                    () => { resetGameSystem(); currentLevel = 1; if(instScreen) instScreen.classList.remove('hidden'); }
+                );
             } else {
-                alert(`Perfect! Level ${currentLevel + 1} is now unlocked!`);
                 if(quizScreen) quizScreen.classList.add('hidden');
                 currentLevel++;
                 currentStage = 1;
-                if(instScreen) instScreen.classList.remove('hidden');
+                triggerCustomAlert(
+                    "QUIZ PASSED! ✨", 
+                    `Perfect 5/5 score! Level ${currentLevel} is now officially unlocked.`, 
+                    "ENTER NEXT LEVEL", 
+                    () => { if(instScreen) instScreen.classList.remove('hidden'); }
+                );
             }
         } else {
-            alert(`Quiz Failed! (${correctAnswersCount}/5 correct). Re-shuffling 5 new questions!`);
-            currentQuizIndex = 0;
-            correctAnswersCount = 0;
-            shuffleAndPickQuestions(); 
-            loadQuizQuestion();
+            triggerCustomAlert(
+                "❌ QUIZ FAILED!", 
+                `You got ${correctAnswersCount}/5 correct. Let's reshuffle 5 new questions and try again!`, 
+                "RETRY QUIZ", 
+                () => {
+                    currentQuizIndex = 0;
+                    correctAnswersCount = 0;
+                    shuffleAndPickQuestions(); 
+                    loadQuizQuestion();
+                }
+            );
         }
     }
 
@@ -630,8 +691,13 @@
         isGameRunning = false;
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         if(timerInterval) clearInterval(timerInterval);
-        alert(won ? "Victory!" : "Game Over! Time Ran Out.");
-        resetGameSystem();
+        
+        triggerCustomAlert(
+            won ? "VICTORY!" : "GAME OVER! ⏳", 
+            won ? "You crushed it!" : "Oops! Time ran out before you could clear the stage target.", 
+            "RESTART GAME", 
+            () => { resetGameSystem(); }
+        );
     }
 
     function resetGameSystem() {
@@ -647,6 +713,8 @@
         targetCol = -1;
         updateHUD();
         if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(quizScreen) quizScreen.classList.add('hidden');
+        if(alertScreen) alertScreen.classList.add('hidden');
     }
 </script>
 
