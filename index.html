@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="monetag" content="da1bc57303c72bdf27c92b2707207c4bc">
-    <title>Arcade Striker - Match 3 Bomb Challenge</title>
+    <title>Arcade Striker - Cat Trap Style</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { 
@@ -34,7 +34,7 @@
             margin: 10px auto; 
             border: 2px solid #0284c7; 
             border-radius: 10px;
-            cursor: crosshair;
+            cursor: pointer;
         }
         .btn-arcade { 
             background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); 
@@ -51,24 +51,6 @@
         .btn-arcade:hover {
             transform: scale(1.05);
             box-shadow: 0 0 10px #38bdf8;
-        }
-        .combo-box {
-            background: #1f2937;
-            border: 1px solid #4b5563;
-            border-radius: 8px;
-            padding: 5px;
-            font-size: 14px;
-            min-height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }
-        .combo-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
         }
         /* Overlay System */
         .overlay {
@@ -104,41 +86,33 @@
 <body>
 
 <div class="game-container">
-    <h3 style="color: #38bdf8; letter-spacing: 1px;">ARCADE MATCH-3 STRIKER</h3>
+    <h3 style="color: #38bdf8; letter-spacing: 1px;">TRAP STYLE MATCH-3 PUZZLE</h3>
     
     <div class="d-flex justify-content-around fw-bold my-2">
         <div>SCORE: <span id="score" style="color: #10b981;">0</span></div>
-        <div class="text-warning">LEVEL: <span id="level-display">1</span></div>
+        <div class="text-warning">LEVEL: <span id="level-display">1</span>/50</div>
         <div class="text-warning">STAGE: <span id="stage-display">1</span>/10</div>
         <div class="text-danger">TIME: <span id="time">60</span>s</div>
     </div>
 
-    <div class="my-1 text-center">
-        <div class="combo-box fw-bold">
-            <span>Combo Streak:</span>
-            <div id="combo-container" class="d-flex gap-1 align-items-center">
-                <span class="text-muted small">Hit 3 of same color!</span>
-            </div>
-        </div>
-    </div>
-
     <canvas id="gameCanvas" width="500" height="350"></canvas>
 
-    <div id="target-msg" class="text-info my-2 fw-bold">Hit 10 targets to unlock Stage 2!</div>
+    <div id="target-msg" class="text-info my-2 fw-bold">Clear groups to score points!</div>
     <button id="start-btn" class="btn btn-arcade my-2" onclick="forceStartNewGame()">START NEW GAME</button>
 
     <div id="instructions-screen" class="overlay">
-        <h4 id="inst-title" class="text-info mb-3">LEVEL 1: COLOR MATCH & TIME BOMBS</h4>
+        <h4 id="inst-title" class="text-info mb-3">CAT TRAP STYLE PUZZLE</h4>
         <p id="inst-text" class="px-4 text-center">
-            1. Balls par 5s ka timer chal raha hai, unhe fatne se pehle hit karein!<br>
-            2. Ek sath **3 same color** ki balls back-to-back hit karne par big bonus points milenge!
+            1. Balls screen par fixed Grid layout mein saji hui hain.<br>
+            2. Ek hi color ki **3 ya zyada** aaspas wali balls par click karke unhe Trap/Blast karein!<br>
+            3. Bombs fatne se pehle unhe jaldi clear karein!
         </p>
         <button id="inst-close-btn" class="btn btn-arcade mt-3" onclick="forceCloseInstructions()">START GAME</button>
     </div>
 
     <div id="quiz-screen" class="overlay hidden">
         <h4 class="text-warning mb-2">LEVEL CHALLENGE QUIZ</h4>
-        <p class="text-muted small">Answer 5 questions correctly to unlock the next level!</p>
+        <p class="text-muted small">Answer 5 unique questions correctly to unlock the next level!</p>
         <h5 id="quiz-question" class="my-3 text-center">Question goes here?</h5>
         <div id="quiz-options" class="d-flex flex-column align-items-center w-100"></div>
         <div id="quiz-progress" class="mt-3 text-info fw-bold">Question: 1/5</div>
@@ -147,7 +121,7 @@
 
 <script>
     let canvas, ctx;
-    let scoreText, levelText, stageText, timeText, targetMsg, comboContainer;
+    let scoreText, levelText, stageText, timeText, targetMsg;
     let instScreen, instTitle, instText, quizScreen, quizQuestion, quizOptionsContainer, quizProgressText;
 
     let score = 0;
@@ -158,12 +132,12 @@
     let isGameRunning = false;
     let animationFrameId = null;
 
-    let player = { x: 210, y: 320, width: 100, height: 15, speed: 8, dir: 'bottom' };
-    let balls = [];
+    // Grid configuration for Cat Trap style
+    const rows = 9;
+    const cols = 11;
+    const ballRadius = 14;
+    let grid = []; 
     let explosions = [];
-    let keys = {};
-    
-    let hitStreakColors = []; 
 
     const ballColors = [
         { name: 'Red', hex: '#f43f5e' },
@@ -171,14 +145,72 @@
         { name: 'Green', hex: '#10b981' }
     ];
 
-    // Updated with General Knowledge Questions
-    const quizData = [
+    // Master Bank with 60 Questions
+    const masterQuizBank = [
         { q: "Which planet is known as the Red Planet?", a: ["Venus", "Mars", "Jupiter"], c: 1 },
         { q: "How many hours are there in a single day?", a: ["12 Hours", "24 Hours", "48 Hours"], c: 1 },
         { q: "Which is the largest ocean on Earth?", a: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean"], c: 0 },
         { q: "What is the center of an atom called?", a: ["Electron", "Nucleus", "Orbit"], c: 1 },
-        { q: "Which gas do humans breathe out?", a: ["Oxygen", "Carbon Dioxide", "Nitrogen"], c: 1 }
+        { q: "Which gas do humans breathe out?", a: ["Oxygen", "Carbon Dioxide", "Nitrogen"], c: 1 },
+        { q: "How many colors are there in a rainbow?", a: ["5 Colors", "7 Colors", "9 Colors"], c: 1 },
+        { q: "Which animal is known as the Ship of the Desert?", a: ["Camel", "Horse", "Elephant"], c: 0 },
+        { q: "What is the boiling point of pure water?", a: ["50°C", "100°C", "150°C"], c: 1 },
+        { q: "Which is the fastest land animal on Earth?", a: ["Lion", "Cheetah", "Leopard"], c: 1 },
+        { q: "Which country is famous for the Pyramids?", a: ["Egypt", "Italy", "Greece"], c: 0 },
+        { q: "How many days are there in a normal calendar year?", a: ["350 Days", "365 Days", "366 Days"], c: 1 },
+        { q: "Which planet is closest to the Sun?", a: ["Mercury", "Earth", "Venus"], c: 0 },
+        { q: "What is the primary source of energy for Earth?", a: ["The Moon", "The Sun", "Volcanoes"], c: 1 },
+        { q: "Which shape has three sides?", a: ["Square", "Triangle", "Circle"], c: 1 },
+        { q: "What is the standard color of leaves due to chlorophyll?", a: ["Red", "Green", "Yellow"], c: 1 },
+        { q: "Which is the largest planet in our solar system?", a: ["Saturn", "Jupiter", "Neptune"], c: 1 },
+        { q: "How many bones are there in an adult human body?", a: ["206 Bones", "306 Bones", "156 Bones"], c: 0 },
+        { q: "Which gas do plants absorb from the atmosphere?", a: ["Oxygen", "Carbon Dioxide", "Hydrogen"], c: 1 },
+        { q: "Which place on Earth is known as the Roof of the World?", a: ["Alps", "Tibetan Plateau", "Andes"], c: 1 },
+        { q: "What is the currency of the United States?", a: ["Euro", "Dollar", "Pound"], c: 1 },
+        { q: "Which instrument is used to measure temperature?", a: ["Barometer", "Thermometer", "Speedometer"], c: 1 },
+        { q: "Which is the tallest mountain on Earth?", a: ["K2", "Mount Everest", "Kangchenjunga"], c: 1 },
+        { q: "How many continents are there on Earth?", a: ["5", "6", "7"], c: 2 },
+        { q: "Which country is home to the Kangaroo?", a: ["Africa", "Australia", "New Zealand"], c: 1 },
+        { q: "What freezes at 0 degrees Celsius?", a: ["Milk", "Water", "Oil"], c: 1 },
+        { q: "Which component gives blood its red color?", a: ["Plasma", "Hemoglobin", "White Cells"], c: 1 },
+        { q: "Which is the largest animal currently living on Earth?", a: ["Elephant", "Blue Whale", "Giraffe"], c: 1 },
+        { q: "How many teeth does a normal human adult have?", a: ["28", "32", "36"], c: 1 },
+        { q: "Which star is closest to the Earth?", a: ["Sirius", "The Sun", "Alpha Centauri"], c: 1 },
+        { q: "What is the opposite of the word 'Heavy'?", a: ["Soft", "Light", "Thin"], c: 1 },
+        { q: "Which organ filters blood inside the human body?", a: ["Heart", "Kidneys", "Lungs"], c: 1 },
+        { q: "Which is the smallest continent in the world?", a: ["Europe", "Australia", "Antarctica"], c: 1 },
+        { q: "What is the main ingredient used to make bread?", a: ["Rice", "Flour", "Potato"], c: 1 },
+        { q: "Which bird is famous for its beautiful dancing in rain?", a: ["Peacock", "Sparrow", "Eagle"], c: 0 },
+        { q: "Which sensory organ is used for hearing?", a: ["Eyes", "Ears", "Nose"], c: 1 },
+        { q: "How many weeks are there in a full year?", a: ["48 Weeks", "52 Weeks", "60 Weeks"], c: 1 },
+        { q: "Which force pulls everything towards the ground?", a: ["Magnetism", "Gravity", "Friction"], c: 1 },
+        { q: "Which metal is liquid at room temperature?", a: ["Iron", "Mercury", "Gold"], c: 1 },
+        { q: "What do bees collect from flowers to make honey?", a: ["Water", "Nectar", "Leaves"], c: 1 },
+        { q: "Which is the tallest animal on Earth?", a: ["Elephant", "Giraffe", "Ostrich"], c: 1 },
+        { q: "Which gas is filled inside air balloons to make them fly?", a: ["Nitrogen", "Helium", "Oxygen"], c: 1 },
+        { q: "What is the square root of 64?", a: ["6", "8", "10"], c: 1 },
+        { q: "Which country is shaped like a boot?", a: ["France", "Italy", "Spain"], c: 1 },
+        { q: "Which vitamin do we get naturally from sunlight?", a: ["Vitamin A", "Vitamin D", "Vitamin C"], c: 1 },
+        { q: "How many millimeter make up 1 centimeter?", a: ["10 mm", "100 mm", "1000 mm"], c: 0 },
+        { q: "Which is the hardest natural substance on Earth?", a: ["Gold", "Diamond", "Iron"], c: 1 },
+        { q: "Which chemical element does 'O' stand for in science?", a: ["Osmium", "Oxygen", "Ozone"], c: 1 },
+        { q: "Which process is used by plants to prepare food?", a: ["Respiration", "Photosynthesis", "Evaporation"], c: 1 },
+        { q: "Which organ pumps blood to the entire body?", a: ["Lungs", "Heart", "Brain"], c: 1 },
+        { q: "What is the primary color blend of Yellow and Blue?", a: ["Red", "Green", "Purple"], c: 1 },
+        { q: "How many sides does a hexagon have?", a: ["5 Sides", "6 Sides", "8 Sides"], c: 1 },
+        { q: "Which planet has beautiful prominent rings around it?", a: ["Mars", "Saturn", "Neptune"], c: 1 },
+        { q: "What is the currency of the United Kingdom?", a: ["Dollar", "Pound", "Euro"], c: 1 },
+        { q: "Which is the largest desert in the world?", a: ["Gobi", "Sahara", "Thar"], c: 1 },
+        { q: "Which gas protects Earth from harmful UV rays?", a: ["Oxygen", "Ozone", "Nitrogen"], c: 1 },
+        { q: "How many years are there in a decade?", a: ["10 Years", "50 Years", "100 Years"], c: 0 },
+        { q: "Which part of the plant stays under the ground?", a: ["Stem", "Roots", "Leaves"], c: 1 },
+        { q: "What do we call a baby dog?", a: ["Kitten", "Puppy", "Calf"], c: 1 },
+        { q: "Which gas is most abundant in Earth's atmosphere?", a: ["Oxygen", "Nitrogen", "Carbon Dioxide"], c: 1 },
+        { q: "Which is the smallest planet in our solar system?", a: ["Mars", "Mercury", "Venus"], c: 1 }
     ];
+
+    let unusedQuizPool = [...masterQuizBank]; 
+    let sessionQuizQuestions = []; 
     let currentQuizIndex = 0;
     let correctAnswersCount = 0;
 
@@ -191,7 +223,6 @@
         stageText = document.getElementById('stage-display');
         timeText = document.getElementById('time');
         targetMsg = document.getElementById('target-msg');
-        comboContainer = document.getElementById('combo-container');
         
         instScreen = document.getElementById('instructions-screen');
         instTitle = document.getElementById('inst-title');
@@ -201,25 +232,23 @@
         quizOptionsContainer = document.getElementById('quiz-options');
         quizProgressText = document.getElementById('quiz-progress');
 
-        window.addEventListener('keydown', e => { keys[e.code] = true; });
-        window.addEventListener('keyup', e => { keys[e.code] = false; });
+        canvas.addEventListener('click', handleCanvasClick);
 
         updateHUD();
     });
 
     function forceCloseInstructions() {
-        const box = document.getElementById('instructions-screen');
-        if(box) box.classList.add('hidden');
+        if(instScreen) instScreen.classList.add('hidden');
         initGame();
     }
 
     function forceStartNewGame() {
         resetGameSystem();
-        showInstructions();
+        if(instScreen) instScreen.classList.remove('hidden');
     }
 
     function getTargetForStage(stage) {
-        return 10 + ((stage - 1) * 4); 
+        return 15 + ((stage - 1) * 5); 
     }
 
     function updateHUD() {
@@ -231,46 +260,20 @@
         let req = getTargetForStage(currentStage);
         if(targetMsg) {
             if (currentStage < 10) {
-                targetMsg.innerText = `Hit/Match ${req} points to unlock Stage ${currentStage + 1}!`;
+                targetMsg.innerText = `Get ${req} points to unlock Stage ${currentStage + 1}!`;
             } else {
-                targetMsg.innerText = `Hit/Match ${req} points to unlock Level Quiz Challenge!`;
+                targetMsg.innerText = `Get ${req} points to unlock Level ${currentLevel} Quiz!`;
             }
         }
-        renderComboUI();
-    }
-
-    function renderComboUI() {
-        if(!comboContainer) return;
-        if(hitStreakColors.length === 0) {
-            comboContainer.innerHTML = '<span class="text-muted small">Hit 3 of same color!</span>';
-            return;
-        }
-        comboContainer.innerHTML = '';
-        hitStreakColors.forEach(colorHex => {
-            let dot = document.createElement('div');
-            dot.className = 'combo-dot';
-            dot.style.backgroundColor = colorHex;
-            dot.style.boxShadow = `0 0 5px ${colorHex}`;
-            comboContainer.appendChild(dot);
-        });
-    }
-
-    function showInstructions() {
-        const box = document.getElementById('instructions-screen');
-        if(box) box.classList.remove('hidden');
-        if(instTitle) instTitle.innerText = `LEVEL ${currentLevel}: MATCH-3 & TIMER BOMBS`;
     }
 
     function initGame() {
         isGameRunning = true;
         score = 0;
         timeLeft = 60;
-        balls = [];
         explosions = [];
-        hitStreakColors = [];
-        keys = {}; 
+        generateTrapGrid();
         updateHUD();
-        adjustPlayerDirection();
 
         if(timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
@@ -278,15 +281,24 @@
                 timeLeft--;
                 if(timeText) timeText.innerText = timeLeft;
 
-                for (let i = balls.length - 1; i >= 0; i--) {
-                    balls[i].timer--;
-                    if(balls[i].timer <= 0) {
-                        explosions.push({x: balls[i].x, y: balls[i].y, radius: balls[i].radius, maxRadius: 35, alpha: 1});
-                        balls.splice(i, 1);
-                        score = Math.max(0, score - 1);
-                        if(scoreText) scoreText.innerText = score;
+                // Handle individual ball timer countdowns inside the static grid
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        let cell = grid[r][c];
+                        if (cell && cell.active) {
+                            cell.timer--;
+                            if (cell.timer <= 0) {
+                                explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 35, alpha: 1});
+                                cell.active = false; // Ball explodes out
+                                score = Math.max(0, score - 2); // Penalty for letting it explode
+                                updateHUD();
+                            }
+                        }
                     }
                 }
+                
+                // Refill empty destroyed items randomly over time
+                randomGridRefill();
 
             } else if (timeLeft <= 0) {
                 gameOver(false);
@@ -297,31 +309,51 @@
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 
-    function adjustPlayerDirection() {
-        player.dir = 'bottom'; player.x = 200; player.y = 320; player.width = 100; player.height = 15;
+    // Creates beautiful Hexagonal structured cat trap grid
+    function generateTrapGrid() {
+        grid = [];
+        const xOffset = 38;
+        const yOffset = 34;
+        const startX = 45;
+        const startY = 45;
+
+        for (let r = 0; r < rows; r++) {
+            grid[r] = [];
+            for (let c = 0; c < cols; c++) {
+                // Shift alternative rows slightly right to generate genuine cat-trap mesh layout
+                let shiftX = (r % 2 === 0) ? 0 : xOffset / 2;
+                let posX = startX + (c * xOffset) + shiftX;
+                let posY = startY + (r * yOffset);
+
+                let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+                
+                // Timer values get smaller as level progresses
+                let dynamicTimer = Math.max(4, 9 - Math.floor(currentLevel / 8));
+
+                grid[r][c] = {
+                    x: posX,
+                    y: posY,
+                    row: r,
+                    col: c,
+                    colorHex: randColor.hex,
+                    active: true,
+                    timer: Math.floor(Math.random() * 4) + dynamicTimer
+                };
+            }
+        }
     }
 
-    function spawnBall() {
-        if (!isGameRunning) return;
-        
-        if (balls.length < (5 + currentLevel * 2) && Math.random() < 0.04) {
-            let ballX = Math.random() * (canvas.width - 40) + 20;
-            let ballY = 5;
-            let speedX = (Math.random() - 0.5) * 2.5;
-            let speedY = Math.random() * 1.2 + 1.5; 
-
-            let randomColorObj = ballColors[Math.floor(Math.random() * ballColors.length)];
-
-            balls.push({ 
-                x: ballX, 
-                y: ballY, 
-                vx: speedX, 
-                vy: speedY, 
-                radius: 12, 
-                colorName: randomColorObj.name,
-                colorHex: randomColorObj.hex,
-                timer: 5 
-            });
+    function randomGridRefill() {
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (!grid[r][c].active && Math.random() < 0.15) {
+                    let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+                    let dynamicTimer = Math.max(4, 9 - Math.floor(currentLevel / 8));
+                    grid[r][c].colorHex = randColor.hex;
+                    grid[r][c].timer = Math.floor(Math.random() * 4) + dynamicTimer;
+                    grid[r][c].active = true;
+                }
+            }
         }
     }
 
@@ -329,55 +361,34 @@
         if (!isGameRunning) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        spawnBall();
-        updatePlayerMovement();
-        drawPlayer();
-        updateAndDrawBalls();
+        drawTrapGrid();
         drawExplosions();
-        checkCollisions();
 
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 
-    function updatePlayerMovement() {
-        if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-        if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-    }
+    function drawTrapGrid() {
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let cell = grid[r][c];
+                if (!cell || !cell.active) continue;
 
-    function drawPlayer() {
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(player.x, player.y, player.width, player.height);
-    }
+                // Outer Circle
+                ctx.beginPath();
+                ctx.arc(cell.x, cell.y, ballRadius, 0, Math.PI * 2);
+                ctx.fillStyle = cell.colorHex;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.closePath();
 
-    function updateAndDrawBalls() {
-        for (let i = balls.length - 1; i >= 0; i--) {
-            let ball = balls[i];
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-
-            if (ball.x - ball.radius <= 0 || ball.x + ball.radius >= canvas.width) {
-                ball.vx *= -1;
-            }
-            
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = ball.colorHex;
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.closePath();
-
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(ball.timer, ball.x, ball.y);
-
-            if (ball.y > canvas.height + 20) {
-                balls.splice(i, 1);
+                // Inner countdown number text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(cell.timer, cell.x, cell.y);
             }
         }
     }
@@ -386,7 +397,7 @@
         for (let i = explosions.length - 1; i >= 0; i--) {
             let exp = explosions[i];
             exp.radius += 1.5;
-            exp.alpha -= 0.04;
+            exp.alpha -= 0.05;
 
             ctx.save();
             ctx.globalAlpha = Math.max(0, exp.alpha);
@@ -394,55 +405,108 @@
             ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
             ctx.fillStyle = '#ef4444';
             ctx.fill();
-            
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 10px sans-serif';
-            ctx.fillText("BOOM!", exp.x, exp.y - 5);
             ctx.restore();
 
-            if (exp.alpha <= 0 || exp.radius >= exp.maxRadius) {
+            if (exp.alpha <= 0) {
                 explosions.splice(i, 1);
             }
         }
     }
 
-    function checkCollisions() {
-        for (let i = balls.length - 1; i >= 0; i--) {
-            let ball = balls[i];
-            if (ball.x + ball.radius > player.x && 
-                ball.x - ball.radius < player.x + player.width &&
-                ball.y + ball.radius > player.y && 
-                ball.y - ball.radius < player.y + player.height) {
-                
-                hitStreakColors.push(ball.colorHex);
-                balls.splice(i, 1);
-                
-                score += 1; 
+    function handleCanvasClick(e) {
+        if (!isGameRunning) return;
 
-                if (hitStreakColors.length >= 3) {
-                    let lastIdx = hitStreakColors.length - 1;
-                    if (hitStreakColors[lastIdx] === hitStreakColors[lastIdx - 1] && 
-                        hitStreakColors[lastIdx] === hitStreakColors[lastIdx - 2]) {
-                        
-                        score += 5; 
-                        hitStreakColors = []; 
-                        alert("COMBO BLAST! 3 Same Colors Matched (+5 Bonus Points) 🎉");
+        // Calculate click coordinates relative to canvas
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // Detect which ball/cell was clicked
+        let targetCell = null;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let cell = grid[r][c];
+                if (cell && cell.active) {
+                    let dist = Math.hypot(clickX - cell.x, clickY - cell.y);
+                    if (dist <= ballRadius) {
+                        targetCell = cell;
+                        break;
                     }
                 }
+            }
+            if (targetCell) break;
+        }
 
-                if (hitStreakColors.length > 4) {
-                    hitStreakColors.shift();
-                }
+        if (targetCell) {
+            // Find all connected matching neighbor colors recursively using Flood-Fill logic
+            let matchedCluster = findConnectedCluster(targetCell);
 
-                updateHUD();
+            // If cluster is 3 or more balls, trigger a Match-3 Trap Blast!
+            if (matchedCluster.length >= 3) {
+                matchedCluster.forEach(cell => {
+                    cell.active = false;
+                    explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 25, alpha: 1});
+                });
                 
+                score += matchedCluster.length * 2; // Earn points proportional to cluster size
+                updateHUD();
+
                 let required = getTargetForStage(currentStage);
                 if (score >= required) {
                     advanceStage();
-                    break;
                 }
             }
         }
+    }
+
+    // Cat trap hexagonal adjacency neighbor finding engine (Flood Fill)
+    function findConnectedCluster(startCell) {
+        let cluster = [];
+        let visited = new Set();
+        let queue = [startCell];
+
+        let targetColor = startCell.colorHex;
+        visited.add(`${startCell.row},${startCell.col}`);
+
+        while (queue.length > 0) {
+            let current = queue.shift();
+            cluster.push(current);
+
+            let neighbors = getHexNeighbors(current.row, current.col);
+            neighbors.forEach(n => {
+                let key = `${n.r},${n.c}`;
+                if (!visited.has(key) && n.r >= 0 && n.r < rows && n.c >= 0 && n.c < cols) {
+                    let neighborCell = grid[n.r][n.c];
+                    if (neighborCell && neighborCell.active && neighborCell.colorHex === targetColor) {
+                        visited.add(key);
+                        queue.push(neighborCell);
+                    }
+                }
+            });
+        }
+        return cluster;
+    }
+
+    // Hexagonal Grid adjacent offset helper formulas
+    function getHexNeighbors(r, c) {
+        let neighbors = [];
+        // Universal direct left and right horizontal neighbors
+        neighbors.push({r: r, c: c - 1});
+        neighbors.push({r: r, c: c + 1});
+
+        // Vertical and diagonal neighbors change depending on whether row index is even or odd
+        if (r % 2 === 0) {
+            neighbors.push({r: r - 1, c: c - 1});
+            neighbors.push({r: r - 1, c: c});
+            neighbors.push({r: r + 1, c: c - 1});
+            neighbors.push({r: r + 1, c: c});
+        } else {
+            neighbors.push({r: r - 1, c: c});
+            neighbors.push({r: r - 1, c: c + 1});
+            neighbors.push({r: r + 1, c: c});
+            neighbors.push({r: r + 1, c: c + 1});
+        }
+        return neighbors;
     }
 
     function advanceStage() {
@@ -452,24 +516,36 @@
         
         if (currentStage < 10) {
             currentStage++;
-            alert(`Great Job! You passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`);
+            alert(`Amazing Trap Work! Ready for Stage ${currentStage}?`);
             initGame();
         } else {
             showQuizModal();
         }
     }
 
+    function shuffleAndPickQuestions() {
+        if (unusedQuizPool.length < 5) {
+            unusedQuizPool = [...masterQuizBank];
+        }
+        for (let i = unusedQuizPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [unusedQuizPool[i], unusedQuizPool[j]] = [unusedQuizPool[j], unusedQuizPool[i]];
+        }
+        sessionQuizQuestions = unusedQuizPool.splice(0, 5);
+    }
+
     function showQuizModal() {
         if(quizScreen) quizScreen.classList.remove('hidden');
         currentQuizIndex = 0;
         correctAnswersCount = 0;
+        shuffleAndPickQuestions(); 
         loadQuizQuestion();
     }
 
     function loadQuizQuestion() {
         if (currentQuizIndex < 5) {
             if(quizProgressText) quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
-            let currentQ = quizData[currentQuizIndex];
+            let currentQ = sessionQuizQuestions[currentQuizIndex];
             if(quizQuestion) quizQuestion.innerText = currentQ.q;
             if(quizOptionsContainer) {
                 quizOptionsContainer.innerHTML = '';
@@ -487,7 +563,7 @@
     }
 
     function handleQuizAnswer(selectedIndex) {
-        if (selectedIndex === quizData[currentQuizIndex].c) {
+        if (selectedIndex === sessionQuizQuestions[currentQuizIndex].c) {
             correctAnswersCount++;
         }
         currentQuizIndex++;
@@ -496,15 +572,22 @@
 
     function evaluateQuizResult() {
         if (correctAnswersCount === 5) {
-            alert(`Excellent! Level ${currentLevel + 1} is now unlocked!`);
-            if(quizScreen) quizScreen.classList.add('hidden');
-            currentLevel++;
-            currentStage = 1;
-            showInstructions();
+            if (currentLevel >= 50) {
+                alert("🎉 INCREDIBLE! You passed all 50 levels of Cat Trap Match-3! 🎉");
+                resetGameSystem();
+                currentLevel = 1;
+            } else {
+                alert(`Perfect! Level ${currentLevel + 1} is now unlocked!`);
+                if(quizScreen) quizScreen.classList.add('hidden');
+                currentLevel++;
+                currentStage = 1;
+                if(instScreen) instScreen.classList.remove('hidden');
+            }
         } else {
-            alert(`Quiz Failed! (${correctAnswersCount}/5 correct). Re-trying the Quiz block!`);
+            alert(`Quiz Failed! (${correctAnswersCount}/5 correct). Re-shuffling new general knowledge questions!`);
             currentQuizIndex = 0;
             correctAnswersCount = 0;
+            shuffleAndPickQuestions(); 
             loadQuizQuestion();
         }
     }
@@ -513,7 +596,7 @@
         isGameRunning = false;
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         if(timerInterval) clearInterval(timerInterval);
-        alert(won ? "Fantastic!" : "Game Over! Time ran out.");
+        alert(won ? "Victory!" : "Game Over! Time Ran Out.");
         resetGameSystem();
     }
 
@@ -524,9 +607,8 @@
         score = 0;
         currentStage = 1;
         timeLeft = 60;
-        balls = [];
+        grid = [];
         explosions = [];
-        hitStreakColors = [];
         updateHUD();
         if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
