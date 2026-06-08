@@ -44,6 +44,8 @@
             padding: 10px 25px;
             border-radius: 8px;
             transition: 0.2s;
+            position: relative;
+            z-index: 15;
         }
         .btn-arcade:hover {
             transform: scale(1.05);
@@ -99,7 +101,7 @@
 
     <div id="instructions-screen" class="overlay">
         <h4 id="inst-title" class="text-info mb-3">LEVEL 1: HOW TO PLAY</h4>
-        <p id="inst-text" class="px-4 text-center">Balls will drop from the top. Use Arrow keys to move the paddle left/right and hit the targets!</p>
+        <p id="inst-text" class="px-4 text-center">Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!</p>
         <button id="inst-close-btn" class="btn btn-arcade mt-3">START GAME</button>
     </div>
 
@@ -113,295 +115,304 @@
 </div>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    window.addEventListener('load', () => {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    // UI Elements
-    const scoreText = document.getElementById('score');
-    const levelText = document.getElementById('level-display');
-    const stageText = document.getElementById('stage-display');
-    const timeText = document.getElementById('time');
-    const targetMsg = document.getElementById('target-msg');
-    const startBtn = document.getElementById('start-btn');
-    
-    // Screens
-    const instScreen = document.getElementById('instructions-screen');
-    const instTitle = document.getElementById('inst-title');
-    const instText = document.getElementById('inst-text');
-    const instCloseBtn = document.getElementById('inst-close-btn');
-    const quizScreen = document.getElementById('quiz-screen');
-    const quizQuestion = document.getElementById('quiz-question');
-    const quizOptionsContainer = document.getElementById('quiz-options');
-    const quizProgressText = document.getElementById('quiz-progress');
-
-    // Game Variables
-    let score = 0;
-    let currentStage = 1;
-    let currentLevel = 1;
-    let timeLeft = 60;
-    let gameInterval = null;
-    let timerInterval = null;
-    let isGameRunning = false;
-
-    // Player Configuration
-    let player = { x: 210, y: 330, width: 80, height: 15, speed: 8, dir: 'bottom' };
-    let balls = [];
-    let keys = {};
-
-    // Quiz Bank
-    const quizData = [
-        { q: "What does HTML stand for?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
-        { q: "What is the primary purpose of CSS?", a: ["Database management", "Website designing and styling", "Handling logical conditions"], c: 1 },
-        { q: "Which is the correct way to declare a variable in modern JavaScript?", a: ["v name;", "let name;", "variable name;"], c: 1 },
-        { q: "Which of the following is a core programming concept?", a: ["Loops", "Styles", "Tags"], c: 0 },
-        { q: "What is the main purpose of GitHub?", a: ["To host and track code", "To edit graphic videos", "To purchase web domains"], c: 0 }
-    ];
-    let currentQuizIndex = 0;
-    let correctAnswersCount = 0;
-
-    // Control Keybinds
-    window.addEventListener('keydown', e => keys[e.code] = true);
-    window.addEventListener('keyup', e => keys[e.code] = false);
-
-    // Target Calculator Formula
-    function getTargetForStage(stage) {
-        return 15 + ((stage - 1) * 5);
-    }
-
-    function updateHUD() {
-        if(scoreText) scoreText.innerText = score;
-        if(levelText) levelText.innerText = currentLevel;
-        if(stageText) stageText.innerText = currentStage;
-        if(timeText) timeText.innerText = timeLeft;
+        // UI Elements
+        const scoreText = document.getElementById('score');
+        const levelText = document.getElementById('level-display');
+        const stageText = document.getElementById('stage-display');
+        const timeText = document.getElementById('time');
+        const targetMsg = document.getElementById('target-msg');
+        const startBtn = document.getElementById('start-btn');
         
-        let req = getTargetForStage(currentStage);
-        if(targetMsg) {
-            targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
+        // Screens
+        const instScreen = document.getElementById('instructions-screen');
+        const instTitle = document.getElementById('inst-title');
+        const instText = document.getElementById('inst-text');
+        const instCloseBtn = document.getElementById('inst-close-btn');
+        const quizScreen = document.getElementById('quiz-screen');
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizOptionsContainer = document.getElementById('quiz-options');
+        const quizProgressText = document.getElementById('quiz-progress');
+
+        // Game Variables
+        let score = 0;
+        let currentStage = 1;
+        let currentLevel = 1;
+        let timeLeft = 60;
+        let gameInterval = null;
+        let timerInterval = null;
+        let isGameRunning = false;
+
+        // Player Configuration
+        let player = { x: 210, y: 330, width: 80, height: 15, speed: 8, dir: 'bottom' };
+        let balls = [];
+        let keys = {};
+
+        // Quiz Bank
+        const quizData = [
+            { q: "What does HTML stand for?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
+            { q: "What is the primary purpose of CSS?", a: ["Database management", "Website designing and styling", "Handling logical conditions"], c: 1 },
+            { q: "Which is the correct way to declare a variable in modern JavaScript?", a: ["v name;", "let name;", "variable name;"], c: 1 },
+            { q: "Which of the following is a core programming concept?", a: ["Loops", "Styles", "Tags"], c: 0 },
+            { q: "What is the main purpose of GitHub?", a: ["To host and track code", "To edit graphic videos", "To purchase web domains"], c: 0 }
+        ];
+        let currentQuizIndex = 0;
+        let correctAnswersCount = 0;
+
+        // Control Keybinds
+        window.addEventListener('keydown', e => { keys[e.code] = true; });
+        window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+        // Target Calculator Formula
+        function getTargetForStage(stage) {
+            return 15 + ((stage - 1) * 5);
         }
-    }
 
-    // Dynamic Instructions Panel
-    function showInstructions() {
-        if(instScreen) instScreen.classList.remove('hidden');
-        if (currentLevel === 1) {
-            if(instTitle) instTitle.innerText = "LEVEL 1: STANDARD MODE";
-            if(instText) instText.innerText = "Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!";
-        } else if (currentLevel === 2) {
-            if(instTitle) instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
-            if(instText) instText.innerText = "The physics have changed! Balls will now bounce from the left and right sides. Strike them quickly!";
-        } else {
-            if(instTitle) instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
-            if(instText) instText.innerText = "Ball speeds are faster and movements are zigzag! Keep your focus sharp.";
-        }
-    }
-
-    if(instCloseBtn) {
-        instCloseBtn.addEventListener('click', () => {
-            if(instScreen) instScreen.classList.add('hidden');
-            initGame();
-        });
-    }
-
-    if(startBtn) {
-        startBtn.addEventListener('click', () => {
-            resetGameSystem();
-            showInstructions();
-        });
-    }
-
-    function initGame() {
-        isGameRunning = true;
-        score = 0;
-        timeLeft = 60;
-        balls = [];
-        updateHUD();
-        adjustPlayerDirection();
-
-        if(gameInterval) clearInterval(gameInterval);
-        if(timerInterval) clearInterval(timerInterval);
-
-        gameInterval = setInterval(gameLoop, 1000/60);
-        timerInterval = setInterval(() => {
-            if (timeLeft > 0) {
-                timeLeft--;
-                if(timeText) timeText.innerText = timeLeft;
-            } else {
-                gameOver(false);
-            }
-        }, 1000);
-    }
-
-    function adjustPlayerDirection() {
-        if (currentLevel === 1) {
-            player.dir = 'bottom'; player.x = 210; player.y = 330; player.width = 80; player.height = 15;
-        } else if (currentLevel === 2) {
-            player.dir = 'center'; player.x = 210; player.y = 165; player.width = 80; player.height = 15;
-        } else {
-            player.dir = 'top'; player.x = 210; player.y = 10; player.width = 80; player.height = 15;
-        }
-    }
-
-    function spawnBall() {
-        if (Math.random() < 0.03) {
-            let ballX = Math.random() * (canvas.width - 20) + 10;
-            let ballY = 0;
-            let speedX = (Math.random() - 0.5) * 4;
-            let speedY = Math.random() * 2 + (currentLevel * 0.5) + 1;
-
-            if (currentLevel === 2) {
-                ballX = Math.random() < 0.5 ? 0 : canvas.width;
-                ballY = Math.random() * (canvas.height - 50) + 20;
-                speedX = ballX === 0 ? (Math.random() * 3 + 2) : -(Math.random() * 3 + 2);
-                speedY = (Math.random() - 0.5) * 4;
-            }
-
-            balls.push({ x: ballX, y: ballY, vx: speedX, vy: speedY, radius: 10 });
-        }
-    }
-
-    function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        spawnBall();
-        updatePlayerMovement();
-        drawPlayer();
-        updateAndDrawBalls();
-        checkCollisions();
-    }
-
-    function updatePlayerMovement() {
-        if (player.dir === 'bottom' || player.dir === 'top' || player.dir === 'center') {
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-        }
-        if (currentLevel > 2) {
-            if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-            if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
-        }
-    }
-
-    function drawPlayer() {
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-        ctx.strokeStyle = '#fff';
-        ctx.strokeRect(player.x, player.y, player.width, player.height);
-    }
-
-    function updateAndDrawBalls() {
-        balls.forEach((ball, index) => {
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.vx *= -1;
+        function updateHUD() {
+            if(scoreText) scoreText.innerText = score;
+            if(levelText) levelText.innerText = currentLevel;
+            if(stageText) stageText.innerText = currentStage;
+            if(timeText) timeText.innerText = timeLeft;
             
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = '#f43f5e';
-            ctx.fill();
-            ctx.closePath();
-
-            if (ball.y > canvas.height || ball.y < -20) {
-                balls.splice(index, 1);
+            let req = getTargetForStage(currentStage);
+            if(targetMsg) {
+                targetMsg.innerText = `Hit ${req} targets to unlock Stage ${currentStage + 1}!`;
             }
-        });
-    }
+        }
 
-    function checkCollisions() {
-        balls.forEach((ball, index) => {
-            if (ball.x > player.x && ball.x < player.x + player.width &&
-                ball.y > player.y && ball.y < player.y + player.height) {
-                
-                balls.splice(index, 1);
-                score++;
-                if(scoreText) scoreText.innerText = score;
-                
-                let required = getTargetForStage(currentStage);
-                if (score >= required) {
-                    advanceStage();
+        // Dynamic Instructions Panel
+        function showInstructions() {
+            if(instScreen) instScreen.classList.remove('hidden');
+            if (currentLevel === 1) {
+                if(instTitle) instTitle.innerText = "LEVEL 1: STANDARD MODE";
+                if(instText) instText.innerText = "Balls will drop from the top. Use Arrow keys to move the bottom paddle left/right and hit the targets!";
+            } else if (currentLevel === 2) {
+                if(instTitle) instTitle.innerText = "LEVEL 2: SIDE BOUNCE MODE";
+                if(instText) instText.innerText = "The physics have changed! Balls will now bounce from the left and right sides. Strike them quickly!";
+            } else {
+                if(instTitle) instTitle.innerText = `LEVEL ${currentLevel}: ADVANCED CHALLENGE`;
+                if(instText) instText.innerText = "Ball speeds are faster and movements are zigzag! Keep your focus sharp.";
+            }
+        }
+
+        if(instCloseBtn) {
+            instCloseBtn.addEventListener('click', () => {
+                if(instScreen) instScreen.classList.add('hidden');
+                initGame();
+            });
+        }
+
+        if(startBtn) {
+            startBtn.addEventListener('click', () => {
+                resetGameSystem();
+                showInstructions();
+            });
+        }
+
+        function initGame() {
+            isGameRunning = true;
+            score = 0;
+            timeLeft = 60;
+            balls = [];
+            updateHUD();
+            adjustPlayerDirection();
+
+            if(gameInterval) clearInterval(gameInterval);
+            if(timerInterval) clearInterval(timerInterval);
+
+            gameInterval = setInterval(gameLoop, 1000/60);
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0 && isGameRunning) {
+                    timeLeft--;
+                    if(timeText) timeText.innerText = timeLeft;
+                } else if (timeLeft <= 0) {
+                    gameOver(false);
                 }
-            }
-        });
-    }
+            }, 1000);
+        }
 
-    function advanceStage() {
-        clearInterval(gameInterval);
-        clearInterval(timerInterval);
-        
-        if (currentStage < 50) {
-            currentStage++;
-            alert(`Congratulations! You have reached Stage ${currentStage}.`);
-            initGame();
-        } else {
+        function adjustPlayerDirection() {
+            if (currentLevel === 1) {
+                player.dir = 'bottom'; player.x = 210; player.y = 330; player.width = 80; player.height = 15;
+            } else if (currentLevel === 2) {
+                player.dir = 'center'; player.x = 210; player.y = 165; player.width = 80; player.height = 15;
+            } else {
+                player.dir = 'top'; player.x = 210; player.y = 10; player.width = 80; player.height = 15;
+            }
+        }
+
+        function spawnBall() {
+            if (!isGameRunning) return;
+            if (Math.random() < 0.03) {
+                let ballX = Math.random() * (canvas.width - 20) + 10;
+                let ballY = 0;
+                let speedX = (Math.random() - 0.5) * 4;
+                let speedY = Math.random() * 2 + (currentLevel * 0.5) + 1;
+
+                if (currentLevel === 2) {
+                    ballX = Math.random() < 0.5 ? 0 : canvas.width;
+                    ballY = Math.random() * (canvas.height - 50) + 20;
+                    speedX = ballX === 0 ? (Math.random() * 3 + 2) : -(Math.random() * 3 + 2);
+                    speedY = (Math.random() - 0.5) * 4;
+                }
+
+                balls.push({ x: ballX, y: ballY, vx: speedX, vy: speedY, radius: 10 });
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            spawnBall();
+            updatePlayerMovement();
+            drawPlayer();
+            updateAndDrawBalls();
+            checkCollisions();
+        }
+
+        function updatePlayerMovement() {
+            if (player.dir === 'bottom' || player.dir === 'top' || player.dir === 'center') {
+                if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+                if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+            }
+            if (currentLevel > 2) {
+                if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+                if (keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += player.speed;
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(player.x, player.y, player.width, player.height);
+        }
+
+        function updateAndDrawBalls() {
+            balls.forEach((ball, index) => {
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.vx *= -1;
+                
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#f43f5e';
+                ctx.fill();
+                ctx.closePath();
+
+                if (ball.y > canvas.height || ball.y < -20) {
+                    balls.splice(index, 1);
+                }
+            });
+        }
+
+        function checkCollisions() {
+            balls.forEach((ball, index) => {
+                if (ball.x > player.x && ball.x < player.x + player.width &&
+                    ball.y > player.y && ball.y < player.y + player.height) {
+                    
+                    balls.splice(index, 1);
+                    score++;
+                    if(scoreText) scoreText.innerText = score;
+                    
+                    let required = getTargetForStage(currentStage);
+                    if (score >= required) {
+                        advanceStage();
+                    }
+                }
+            });
+        }
+
+        function advanceStage() {
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
             isGameRunning = false;
-            showQuizModal();
-        }
-    }
-
-    // --- QUIZ MANAGEMENT SYSTEM ---
-    function showQuizModal() {
-        if(quizScreen) quizScreen.classList.remove('hidden');
-        currentQuizIndex = 0;
-        correctAnswersCount = 0;
-        loadQuizQuestion();
-    }
-
-    function loadQuizQuestion() {
-        if (currentQuizIndex < 5) {
-            if(quizProgressText) quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
-            let currentQ = quizData[currentQuizIndex];
-            if(quizQuestion) quizQuestion.innerText = currentQ.q;
-            if(quizOptionsContainer) {
-                quizOptionsContainer.innerHTML = '';
-                currentQ.a.forEach((opt, idx) => {
-                    let btn = document.createElement('button');
-                    btn.className = 'quiz-option';
-                    btn.innerText = opt;
-                    btn.onclick = () => handleQuizAnswer(idx);
-                    quizOptionsContainer.appendChild(btn);
-                });
+            
+            if (currentStage < 50) {
+                currentStage++;
+                alert(`Congratulations! You have reached Stage ${currentStage}.`);
+                initGame();
+            } else {
+                showQuizModal();
             }
-        } else {
-            evaluateQuizResult();
         }
-    }
 
-    function handleQuizAnswer(selectedIndex) {
-        if (selectedIndex === quizData[currentQuizIndex].c) {
-            correctAnswersCount++;
-        }
-        currentQuizIndex++;
-        loadQuizQuestion();
-    }
-
-    function evaluateQuizResult() {
-        if (correctAnswersCount === 5) {
-            alert(`Excellent! All answers are correct. Level ${currentLevel + 1} is now unlocked!`);
-            if(quizScreen) quizScreen.classList.add('hidden');
-            currentLevel++;
-            currentStage = 1;
-            showInstructions();
-        } else {
-            alert(`Game Over! You scored ${correctAnswersCount}/5. You need a perfect score to pass this level. Try again!`);
+        // --- QUIZ SYSTEM ---
+        function showQuizModal() {
+            if(quizScreen) quizScreen.classList.remove('hidden');
             currentQuizIndex = 0;
             correctAnswersCount = 0;
             loadQuizQuestion();
         }
-    }
 
-    function gameOver(won) {
-        isGameRunning = false;
-        clearInterval(gameInterval);
-        clearInterval(timerInterval);
-        alert(won ? "Fantastic! You nailed it!" : "Game Over! Time ran out. Try again!");
-        resetGameSystem();
-    }
+        function loadQuizQuestion() {
+            if (currentQuizIndex < 5) {
+                if(quizProgressText) quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
+                let currentQ = quizData[currentQuizIndex];
+                if(quizQuestion) quizQuestion.innerText = currentQ.q;
+                if(quizOptionsContainer) {
+                    quizOptionsContainer.innerHTML = '';
+                    currentQ.a.forEach((opt, idx) => {
+                        let btn = document.createElement('button');
+                        btn.className = 'quiz-option';
+                        btn.innerText = opt;
+                        btn.onclick = () => handleQuizAnswer(idx);
+                        quizOptionsContainer.appendChild(btn);
+                    });
+                }
+            } else {
+                evaluateQuizResult();
+            }
+        }
 
-    function resetGameSystem() {
-        score = 0;
-        currentStage = 1;
-        timeLeft = 60;
+        function handleQuizAnswer(selectedIndex) {
+            if (selectedIndex === quizData[currentQuizIndex].c) {
+                correctAnswersCount++;
+            }
+            currentQuizIndex++;
+            loadQuizQuestion();
+        }
+
+        function evaluateQuizResult() {
+            if (correctAnswersCount === 5) {
+                alert(`Excellent! All answers are correct. Level ${currentLevel + 1} is now unlocked!`);
+                if(quizScreen) quizScreen.classList.add('hidden');
+                currentLevel++;
+                currentStage = 1;
+                showInstructions();
+            } else {
+                alert(`Game Over! You scored ${correctAnswersCount}/5. You need a perfect score to pass this level. Try again!`);
+                currentQuizIndex = 0;
+                correctAnswersCount = 0;
+                loadQuizQuestion();
+            }
+        }
+
+        function gameOver(won) {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            alert(won ? "Fantastic! You nailed it!" : "Game Over! Time ran out. Try again!");
+            resetGameSystem();
+        }
+
+        function resetGameSystem() {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            score = 0;
+            currentStage = 1;
+            timeLeft = 60;
+            updateHUD();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Initial Trigger to kickstart elements rendering
         updateHUD();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    });
 </script>
 
 </body>
