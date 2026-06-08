@@ -117,7 +117,7 @@
         <div class="combo-box fw-bold">
             <span>Combo Streak:</span>
             <div id="combo-container" class="d-flex gap-1 align-items-center">
-                <span class="text-muted small">Hit balls to start a match!</span>
+                <span class="text-muted small">Hit 3 of same color!</span>
             </div>
         </div>
     </div>
@@ -163,7 +163,6 @@
     let explosions = [];
     let keys = {};
     
-    // Track last hit ball colors for Match-3
     let hitStreakColors = []; 
 
     const ballColors = [
@@ -172,12 +171,13 @@
         { name: 'Green', hex: '#10b981' }
     ];
 
+    // Updated with General Knowledge Questions
     const quizData = [
-        { q: "What does HTML stand for?", a: ["Hyper Text Markup Language", "High Tech Machine Language", "Hyperlink Text Management"], c: 0 },
-        { q: "What is the primary purpose of CSS?", a: ["Database management", "Website designing and styling", "Handling logical conditions"], c: 1 },
-        { q: "Which is the correct way to declare a variable in modern JavaScript?", a: ["v name;", "let name;", "variable name;"], c: 1 },
-        { q: "Which of the following is a core programming concept?", a: ["Loops", "Styles", "Tags"], c: 0 },
-        { q: "What is the main purpose of GitHub?", a: ["To host and track code", "To edit graphic videos", "To purchase web domains"], c: 0 }
+        { q: "Which planet is known as the Red Planet?", a: ["Venus", "Mars", "Jupiter"], c: 1 },
+        { q: "How many hours are there in a single day?", a: ["12 Hours", "24 Hours", "48 Hours"], c: 1 },
+        { q: "Which is the largest ocean on Earth?", a: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean"], c: 0 },
+        { q: "What is the center of an atom called?", a: ["Electron", "Nucleus", "Orbit"], c: 1 },
+        { q: "Which gas do humans breathe out?", a: ["Oxygen", "Carbon Dioxide", "Nitrogen"], c: 1 }
     ];
     let currentQuizIndex = 0;
     let correctAnswersCount = 0;
@@ -278,14 +278,11 @@
                 timeLeft--;
                 if(timeText) timeText.innerText = timeLeft;
 
-                // Game Ball internal timer updates every second
                 for (let i = balls.length - 1; i >= 0; i--) {
                     balls[i].timer--;
                     if(balls[i].timer <= 0) {
-                        // Create bomb blast particle logic
                         explosions.push({x: balls[i].x, y: balls[i].y, radius: balls[i].radius, maxRadius: 35, alpha: 1});
                         balls.splice(i, 1);
-                        // Penalty for letting bomb explode
                         score = Math.max(0, score - 1);
                         if(scoreText) scoreText.innerText = score;
                     }
@@ -307,14 +304,12 @@
     function spawnBall() {
         if (!isGameRunning) return;
         
-        // Increased concurrent balls limit for a rich action view
         if (balls.length < (5 + currentLevel * 2) && Math.random() < 0.04) {
             let ballX = Math.random() * (canvas.width - 40) + 20;
             let ballY = 5;
             let speedX = (Math.random() - 0.5) * 2.5;
             let speedY = Math.random() * 1.2 + 1.5; 
 
-            // Pick randomized color object
             let randomColorObj = ballColors[Math.floor(Math.random() * ballColors.length)];
 
             balls.push({ 
@@ -322,10 +317,10 @@
                 y: ballY, 
                 vx: speedX, 
                 vy: speedY, 
-                radius: 12, // slightly bigger to show the timer digits inside
+                radius: 12, 
                 colorName: randomColorObj.name,
                 colorHex: randomColorObj.hex,
-                timer: 5 // 5 Seconds countdown timer bomb
+                timer: 5 
             });
         }
     }
@@ -363,12 +358,10 @@
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Side wall bounce
             if (ball.x - ball.radius <= 0 || ball.x + ball.radius >= canvas.width) {
                 ball.vx *= -1;
             }
             
-            // Draw Ball Outer Circle
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
             ctx.fillStyle = ball.colorHex;
@@ -378,14 +371,11 @@
             ctx.stroke();
             ctx.closePath();
 
-            // Render embedded countdown numeric timer inside the ball
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(ball.timer, ball.x, ball.y);
 
-            // Natural screen exit clean wrapper
             if (ball.y > canvas.height + 20) {
                 balls.splice(i, 1);
             }
@@ -424,27 +414,22 @@
                 ball.y + ball.radius > player.y && 
                 ball.y - ball.radius < player.y + player.height) {
                 
-                // Add color sequence structure evaluation
                 hitStreakColors.push(ball.colorHex);
                 balls.splice(i, 1);
                 
-                // standard hit reward points
                 score += 1; 
 
-                // Match-3 sequence checker evaluation logic
                 if (hitStreakColors.length >= 3) {
                     let lastIdx = hitStreakColors.length - 1;
                     if (hitStreakColors[lastIdx] === hitStreakColors[lastIdx - 1] && 
                         hitStreakColors[lastIdx] === hitStreakColors[lastIdx - 2]) {
                         
-                        // Blast Match detected! Mega points reward
                         score += 5; 
-                        hitStreakColors = []; // clear current streak buffer chain
+                        hitStreakColors = []; 
                         alert("COMBO BLAST! 3 Same Colors Matched (+5 Bonus Points) 🎉");
                     }
                 }
 
-                // Maintain clean cap for streak rendering dot bars
                 if (hitStreakColors.length > 4) {
                     hitStreakColors.shift();
                 }
