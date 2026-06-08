@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="monetag" content="da1bc57303c72bdf27c92b2707207c4bc">
-    <title>Arcade Striker - Cat Trap Style</title>
+    <title>Arcade Striker - Single Target Timer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { 
@@ -52,7 +52,6 @@
             transform: scale(1.05);
             box-shadow: 0 0 10px #38bdf8;
         }
-        /* Overlay System */
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -86,26 +85,27 @@
 <body>
 
 <div class="game-container">
-    <h3 style="color: #38bdf8; letter-spacing: 1px;">TRAP STYLE MATCH-3 PUZZLE</h3>
+    <h3 style="color: #38bdf8; letter-spacing: 1px;">TARGET TIMER PUZZLE</h3>
     
     <div class="d-flex justify-content-around fw-bold my-2">
         <div>SCORE: <span id="score" style="color: #10b981;">0</span></div>
         <div class="text-warning">LEVEL: <span id="level-display">1</span>/50</div>
         <div class="text-warning">STAGE: <span id="stage-display">1</span>/10</div>
-        <div class="text-danger">TIME: <span id="time">60</span>s</div>
+        <div class="text-danger">TOTAL TIME: <span id="time">60</span>s</div>
     </div>
 
     <canvas id="gameCanvas" width="500" height="350"></canvas>
 
-    <div id="target-msg" class="text-info my-2 fw-bold">Clear groups to score points!</div>
+    <div id="target-msg" class="text-info my-2 fw-bold">Click the glowing ball with the timer!</div>
     <button id="start-btn" class="btn btn-arcade my-2" onclick="forceStartNewGame()">START NEW GAME</button>
 
     <div id="instructions-screen" class="overlay">
-        <h4 id="inst-title" class="text-info mb-3">CAT TRAP STYLE PUZZLE</h4>
+        <h4 id="inst-title" class="text-info mb-3">HOW TO PLAY</h4>
         <p id="inst-text" class="px-4 text-center">
-            1. Balls screen par fixed Grid layout mein saji hui hain.<br>
-            2. Ek hi color ki **3 ya zyada** aaspas wali balls par click karke unhe Trap/Blast karein!<br>
-            3. Bombs fatne se pehle unhe jaldi clear karein!
+            1. Board par har ball ka timer nahi chalega!<br>
+            2. Sirf **EK glowing ball** par countdown chalega.<br>
+            3. Us ball ka time khatam hone se pehle usay 3+ same colors ke sath blast karein.<br>
+            4. Jaise hi us ball ka time khatam hoga, timer **auto doosri ball par shift** ho jayega!
         </p>
         <button id="inst-close-btn" class="btn btn-arcade mt-3" onclick="forceCloseInstructions()">START GAME</button>
     </div>
@@ -132,12 +132,18 @@
     let isGameRunning = false;
     let animationFrameId = null;
 
-    // Grid configuration for Cat Trap style
-    const rows = 9;
+    const rows = 8;
     const cols = 11;
-    const ballRadius = 14;
+    const ballRadius = 15;
     let grid = []; 
     let explosions = [];
+
+    // Single Target Tracking Variables
+    let targetRow = -1;
+    let targetCol = -1;
+    let targetBallTimer = 5; 
+    let pulseRadius = 15;
+    let pulseGrowing = true;
 
     const ballColors = [
         { name: 'Red', hex: '#f43f5e' },
@@ -145,7 +151,6 @@
         { name: 'Green', hex: '#10b981' }
     ];
 
-    // Master Bank with 60 Questions
     const masterQuizBank = [
         { q: "Which planet is known as the Red Planet?", a: ["Venus", "Mars", "Jupiter"], c: 1 },
         { q: "How many hours are there in a single day?", a: ["12 Hours", "24 Hours", "48 Hours"], c: 1 },
@@ -225,15 +230,12 @@
         targetMsg = document.getElementById('target-msg');
         
         instScreen = document.getElementById('instructions-screen');
-        instTitle = document.getElementById('inst-title');
-        instText = document.getElementById('inst-text');
         quizScreen = document.getElementById('quiz-screen');
         quizQuestion = document.getElementById('quiz-question');
         quizOptionsContainer = document.getElementById('quiz-options');
         quizProgressText = document.getElementById('quiz-progress');
 
         canvas.addEventListener('click', handleCanvasClick);
-
         updateHUD();
     });
 
@@ -248,7 +250,7 @@
     }
 
     function getTargetForStage(stage) {
-        return 15 + ((stage - 1) * 5); 
+        return 10 + ((stage - 1) * 5); 
     }
 
     function updateHUD() {
@@ -272,7 +274,8 @@
         score = 0;
         timeLeft = 60;
         explosions = [];
-        generateTrapGrid();
+        generateStaticGrid();
+        pickNewRandomTargetBall(); // Select first target ball
         updateHUD();
 
         if(timerInterval) clearInterval(timerInterval);
@@ -281,25 +284,14 @@
                 timeLeft--;
                 if(timeText) timeText.innerText = timeLeft;
 
-                // Handle individual ball timer countdowns inside the static grid
-                for (let r = 0; r < rows; r++) {
-                    for (let c = 0; c < cols; c++) {
-                        let cell = grid[r][c];
-                        if (cell && cell.active) {
-                            cell.timer--;
-                            if (cell.timer <= 0) {
-                                explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 35, alpha: 1});
-                                cell.active = false; // Ball explodes out
-                                score = Math.max(0, score - 2); // Penalty for letting it explode
-                                updateHUD();
-                            }
-                        }
-                    }
+                // Handle single active target ball countdown
+                targetBallTimer--;
+                if (targetBallTimer <= 0) {
+                    // Time up for current ball, penalty score and switch instantly to another ball!
+                    score = Math.max(0, score - 1);
+                    updateHUD();
+                    pickNewRandomTargetBall();
                 }
-                
-                // Refill empty destroyed items randomly over time
-                randomGridRefill();
-
             } else if (timeLeft <= 0) {
                 gameOver(false);
             }
@@ -309,86 +301,107 @@
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 
-    // Creates beautiful Hexagonal structured cat trap grid
-    function generateTrapGrid() {
+    function generateStaticGrid() {
         grid = [];
         const xOffset = 38;
         const yOffset = 34;
-        const startX = 45;
+        const startX = 55;
         const startY = 45;
 
         for (let r = 0; r < rows; r++) {
             grid[r] = [];
             for (let c = 0; c < cols; c++) {
-                // Shift alternative rows slightly right to generate genuine cat-trap mesh layout
                 let shiftX = (r % 2 === 0) ? 0 : xOffset / 2;
                 let posX = startX + (c * xOffset) + shiftX;
                 let posY = startY + (r * yOffset);
-
                 let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
-                
-                // Timer values get smaller as level progresses
-                let dynamicTimer = Math.max(4, 9 - Math.floor(currentLevel / 8));
 
                 grid[r][c] = {
                     x: posX,
                     y: posY,
-                    row: r,
-                    col: c,
                     colorHex: randColor.hex,
-                    active: true,
-                    timer: Math.floor(Math.random() * 4) + dynamicTimer
+                    active: true
                 };
             }
         }
     }
 
-    function randomGridRefill() {
+    // Picks exactly ONE random active ball to put the timer on
+    function pickNewRandomTargetBall() {
+        let activeCells = [];
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                if (!grid[r][c].active && Math.random() < 0.15) {
-                    let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
-                    let dynamicTimer = Math.max(4, 9 - Math.floor(currentLevel / 8));
-                    grid[r][c].colorHex = randColor.hex;
-                    grid[r][c].timer = Math.floor(Math.random() * 4) + dynamicTimer;
-                    grid[r][c].active = true;
+                if (grid[r][c] && grid[r][c].active) {
+                    activeCells.push({r: r, c: c});
                 }
             }
+        }
+
+        if (activeCells.length > 0) {
+            let choice = activeCells[Math.floor(Math.random() * activeCells.length)];
+            targetRow = choice.r;
+            targetCol = choice.c;
+            // Speed up timer slightly as level increases
+            targetBallTimer = Math.max(3, 6 - Math.floor(currentLevel / 12)); 
+        } else {
+            targetRow = -1;
+            targetCol = -1;
         }
     }
 
     function gameLoop() {
         if (!isGameRunning) return;
-
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawTrapGrid();
-        drawExplosions();
+        
+        // Handle visual pulsing effect for the single target ball
+        if (pulseGrowing) {
+            pulseRadius += 0.2;
+            if (pulseRadius >= 22) pulseGrowing = false;
+        } else {
+            pulseRadius -= 0.2;
+            if (pulseRadius <= 15) pulseGrowing = true;
+        }
 
+        drawStaticGrid();
+        drawExplosions();
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 
-    function drawTrapGrid() {
+    function drawStaticGrid() {
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 let cell = grid[r][c];
                 if (!cell || !cell.active) continue;
 
-                // Outer Circle
+                // If this is the chosen target ball, draw a glowing outer ring & countdown text
+                if (r === targetRow && c === targetCol) {
+                    ctx.beginPath();
+                    ctx.arc(cell.x, cell.y, pulseRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+
                 ctx.beginPath();
                 ctx.arc(cell.x, cell.y, ballRadius, 0, Math.PI * 2);
                 ctx.fillStyle = cell.colorHex;
                 ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = (r === targetRow && c === targetCol) ? '#38bdf8' : '#ffffff';
+                ctx.lineWidth = (r === targetRow && c === targetCol) ? 2 : 1;
                 ctx.stroke();
                 ctx.closePath();
 
-                // Inner countdown number text
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(cell.timer, cell.x, cell.y);
+                // Draw text inside the active ball ONLY
+                if (r === targetRow && c === targetCol) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(targetBallTimer, cell.x, cell.y);
+                }
             }
         }
     }
@@ -396,14 +409,14 @@
     function drawExplosions() {
         for (let i = explosions.length - 1; i >= 0; i--) {
             let exp = explosions[i];
-            exp.radius += 1.5;
+            exp.radius += 2;
             exp.alpha -= 0.05;
 
             ctx.save();
             ctx.globalAlpha = Math.max(0, exp.alpha);
             ctx.beginPath();
             ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444';
+            ctx.fillStyle = '#ffffff';
             ctx.fill();
             ctx.restore();
 
@@ -416,40 +429,53 @@
     function handleCanvasClick(e) {
         if (!isGameRunning) return;
 
-        // Calculate click coordinates relative to canvas
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
 
-        // Detect which ball/cell was clicked
-        let targetCell = null;
+        let clickedRow = -1, clickedCol = -1;
+
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 let cell = grid[r][c];
                 if (cell && cell.active) {
                     let dist = Math.hypot(clickX - cell.x, clickY - cell.y);
                     if (dist <= ballRadius) {
-                        targetCell = cell;
+                        clickedRow = r;
+                        clickedCol = c;
                         break;
                     }
                 }
             }
-            if (targetCell) break;
+            if (clickedRow !== -1) break;
         }
 
-        if (targetCell) {
-            // Find all connected matching neighbor colors recursively using Flood-Fill logic
-            let matchedCluster = findConnectedCluster(targetCell);
+        if (clickedRow !== -1 && clickedCol !== -1) {
+            let startCell = grid[clickedRow][clickedCol];
+            let matchedCluster = findConnectedCluster(clickedRow, clickedCol, startCell.colorHex);
 
-            // If cluster is 3 or more balls, trigger a Match-3 Trap Blast!
             if (matchedCluster.length >= 3) {
-                matchedCluster.forEach(cell => {
+                let containsTarget = false;
+
+                matchedCluster.forEach(pos => {
+                    let cell = grid[pos.r][pos.c];
                     cell.active = false;
                     explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 25, alpha: 1});
+                    
+                    if (pos.r === targetRow && pos.c === targetCol) {
+                        containsTarget = true;
+                    }
                 });
-                
-                score += matchedCluster.length * 2; // Earn points proportional to cluster size
+
+                score += matchedCluster.length;
                 updateHUD();
+
+                applyBoardGravity();
+
+                // If the user successfully destroyed the active timer ball, pick a new one instantly!
+                if (containsTarget || (grid[targetRow] && !grid[targetRow][targetCol].active)) {
+                    pickNewRandomTargetBall();
+                }
 
                 let required = getTargetForStage(currentStage);
                 if (score >= required) {
@@ -459,27 +485,24 @@
         }
     }
 
-    // Cat trap hexagonal adjacency neighbor finding engine (Flood Fill)
-    function findConnectedCluster(startCell) {
+    function findConnectedCluster(startRow, startCol, targetColor) {
         let cluster = [];
         let visited = new Set();
-        let queue = [startCell];
-
-        let targetColor = startCell.colorHex;
-        visited.add(`${startCell.row},${startCell.col}`);
+        let queue = [{r: startRow, c: startCol}];
+        visited.add(`${startRow},${startCol}`);
 
         while (queue.length > 0) {
-            let current = queue.shift();
-            cluster.push(current);
+            let curr = queue.shift();
+            cluster.push(curr);
 
-            let neighbors = getHexNeighbors(current.row, current.col);
+            let neighbors = getHexNeighbors(curr.r, curr.c);
             neighbors.forEach(n => {
                 let key = `${n.r},${n.c}`;
                 if (!visited.has(key) && n.r >= 0 && n.r < rows && n.c >= 0 && n.c < cols) {
-                    let neighborCell = grid[n.r][n.c];
-                    if (neighborCell && neighborCell.active && neighborCell.colorHex === targetColor) {
+                    let cell = grid[n.r][n.c];
+                    if (cell && cell.active && cell.colorHex === targetColor) {
                         visited.add(key);
-                        queue.push(neighborCell);
+                        queue.push(n);
                     }
                 }
             });
@@ -487,14 +510,11 @@
         return cluster;
     }
 
-    // Hexagonal Grid adjacent offset helper formulas
     function getHexNeighbors(r, c) {
         let neighbors = [];
-        // Universal direct left and right horizontal neighbors
         neighbors.push({r: r, c: c - 1});
         neighbors.push({r: r, c: c + 1});
 
-        // Vertical and diagonal neighbors change depending on whether row index is even or odd
         if (r % 2 === 0) {
             neighbors.push({r: r - 1, c: c - 1});
             neighbors.push({r: r - 1, c: c});
@@ -509,6 +529,29 @@
         return neighbors;
     }
 
+    function applyBoardGravity() {
+        for (let c = 0; c < cols; c++) {
+            let activeColors = [];
+            for (let r = rows - 1; r >= 0; r--) {
+                if (grid[r][c].active) {
+                    activeColors.push(grid[r][c].colorHex);
+                }
+            }
+
+            while (activeColors.length < rows) {
+                let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+                activeColors.push(randColor.hex);
+            }
+
+            let idx = 0;
+            for (let r = rows - 1; r >= 0; r--) {
+                grid[r][c].colorHex = activeColors[idx];
+                grid[r][c].active = true;
+                idx++;
+            }
+        }
+    }
+
     function advanceStage() {
         isGameRunning = false;
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -516,7 +559,7 @@
         
         if (currentStage < 10) {
             currentStage++;
-            alert(`Amazing Trap Work! Ready for Stage ${currentStage}?`);
+            alert(`Great Job! Ready for Stage ${currentStage}?`);
             initGame();
         } else {
             showQuizModal();
@@ -573,7 +616,7 @@
     function evaluateQuizResult() {
         if (correctAnswersCount === 5) {
             if (currentLevel >= 50) {
-                alert("🎉 INCREDIBLE! You passed all 50 levels of Cat Trap Match-3! 🎉");
+                alert("🎉 VICTORY! You have completed all 50 levels perfectly! 🎉");
                 resetGameSystem();
                 currentLevel = 1;
             } else {
@@ -584,7 +627,7 @@
                 if(instScreen) instScreen.classList.remove('hidden');
             }
         } else {
-            alert(`Quiz Failed! (${correctAnswersCount}/5 correct). Re-shuffling new general knowledge questions!`);
+            alert(`Quiz Failed! (${correctAnswersCount}/5 correct). Re-shuffling 5 new questions!`);
             currentQuizIndex = 0;
             correctAnswersCount = 0;
             shuffleAndPickQuestions(); 
@@ -609,6 +652,8 @@
         timeLeft = 60;
         grid = [];
         explosions = [];
+        targetRow = -1;
+        targetCol = -1;
         updateHUD();
         if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
