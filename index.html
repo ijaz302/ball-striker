@@ -675,21 +675,14 @@
 } else {
         triggerCustomAlert(
             "❌ GAME OVER!",
-            `Quiz Failed! You got ${correctAnswersCount}/5 correct. Total wrong answers: ${5 - correctAnswersCount}.`,
+            `Quiz Failed! You got ${correctAnswersCount}/5 correct.`,
             "START NEW GAME",
             () => {
-                // Quiz screens ko band karke main menu ya start screen par le jaane ke liye:
                 if(quizScreen) quizScreen.classList.add('hidden');
-                
-                // Pure game ko restart/reset karne wala function yahan call karein:
-                if (typeof resetGame === 'function') {
-                    resetGame(); 
-                } else {
-                    // Agar resetGame nahi bana hua, toh page reload ho jaye taake fresh start ho:
-                    location.reload();
-                }
+                // Aapke game ka apna bana hua function call hoga:
+                gameOver(false); 
             }
-        );
+        );    
     }
         }
     }
