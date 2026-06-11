@@ -25,7 +25,7 @@
             text-align: center;
             position: relative;
             box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
-            width: 540px;
+            width: 580px; /* Thoda wide kiya taake badi balls adjust ho sakein */
         }
         canvas { 
             background: #030712; 
@@ -104,17 +104,18 @@
         <div class="text-danger">TOTAL TIME: <span id="time">120</span>s</div>
     </div>
 
-    <canvas id="gameCanvas" width="500" height="350"></canvas>
+    <canvas id="gameCanvas" width="540" height="400"></canvas>
 
-    <div id="target-msg" class="text-info my-2 fw-bold">Click the glowing ball with the timer!</div>
+    <div id="target-msg" class="text-info my-2 fw-bold">Click the glowing ball before its timer hits 0!</div>
     <button id="start-btn" class="btn btn-arcade my-2">START NEW GAME</button>
 
     <div id="instructions-screen" class="overlay">
         <h4 id="inst-title" class="text-info mb-3">HOW TO PLAY</h4>
         <p id="inst-text" class="px-4 text-center">
-            1. Board par ruki hui balls mein se sirf **EK glowing ball** par countdown chalega.<br>
+            1. Board par ruki hui balls mein se **EK glowing ball** par countdown chalega.<br>
             2. Us ball ko 3+ same colors ke sath mila kar blast karein.<br>
-            3. Stage 1 ka target **50** hai, aur har agli stage par **10 points** barhte jayenge!
+            3. **ALERT!** Agar ball ka timer 0 hua toh direct **GAME OVER** ho jayega!<br>
+            4. Stage 1 ka target **50** hai, har stage par 10 points barhte jayenge!
         </p>
         <button id="inst-close-btn" class="btn btn-arcade mt-3">START GAME</button>
     </div>
@@ -153,14 +154,14 @@
 
     const rows = 8;
     const cols = 11;
-    const ballRadius = 15;
+    const ballRadius = 20; // Balls ka size 15 se 20 kar diya
     let grid = []; 
     let explosions = [];
 
     let targetRow = -1;
     let targetCol = -1;
-    let targetBallTimer = 5; 
-    let pulseRadius = 15;
+    let targetBallTimer = 10; // Timer 5 se 10 seconds kar diya
+    let pulseRadius = 20;
     let pulseGrowing = true;
 
     const ballColors = [
@@ -261,7 +262,6 @@
         alertText = document.getElementById('alert-text');
         alertActionBtn = document.getElementById('alert-action-btn');
 
-        // Strong click binding via JavaScript
         instCloseBtn.addEventListener('click', forceCloseInstructions);
         startBtn.addEventListener('click', forceStartNewGame);
         alertActionBtn.addEventListener('click', closeCustomAlert);
@@ -333,10 +333,10 @@
 
                 targetBallTimer--;
                 if (targetBallTimer <= 0) {
-                    pickNewRandomTargetBall();
+                    gameOver(false, "ball-timeout"); // Ball ka timer khatam hone par direct Game Over
                 }
             } else if (timeLeft <= 0) {
-                gameOver(false);
+                gameOver(false, "total-timeout");
             }
         }, 1000);
 
@@ -346,9 +346,10 @@
 
     function generateStaticGrid() {
         grid = [];
-        const xOffset = 38;
-        const yOffset = 34;
-        const startX = 55;
+        // Gap adjusting according to new radius 20
+        const xOffset = 46;
+        const yOffset = 42;
+        const startX = 40;
         const startY = 45;
 
         for (let r = 0; r < rows; r++) {
@@ -383,7 +384,7 @@
             let choice = activeCells[Math.floor(Math.random() * activeCells.length)];
             targetRow = choice.r;
             targetCol = choice.c;
-            targetBallTimer = 6; 
+            targetBallTimer = 10; // Naye ball ke liye bhi full 10 seconds mileinge
         } else {
             targetRow = -1;
             targetCol = -1;
@@ -396,10 +397,10 @@
         
         if (pulseGrowing) {
             pulseRadius += 0.2;
-            if (pulseRadius >= 22) pulseGrowing = false;
+            if (pulseRadius >= 28) pulseGrowing = false;
         } else {
             pulseRadius -= 0.2;
-            if (pulseRadius <= 15) pulseGrowing = true;
+            if (pulseRadius <= 20) pulseGrowing = true;
         }
 
         drawStaticGrid();
@@ -435,7 +436,7 @@
 
                 if (r === targetRow && c === targetCol) {
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 12px sans-serif';
+                    ctx.font = 'bold 14px sans-serif'; // text thoda bada kiya
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(targetBallTimer, cell.x, cell.y);
@@ -498,7 +499,7 @@
                 matchedCluster.forEach(pos => {
                     let cell = grid[pos.r][pos.c];
                     cell.active = false;
-                    explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 25, alpha: 1});
+                    explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 30, alpha: 1});
                     
                     if (pos.r === targetRow && pos.c === targetCol) {
                         containsTarget = true;
@@ -693,14 +694,19 @@
         }
     }
 
-    function gameOver(won) {
+    function gameOver(won, type = "total-timeout") {
         isGameRunning = false;
         if(animationFrameId) cancelAnimationFrame(animationFrameId);
         if(timerInterval) clearInterval(timerInterval);
         
+        let msg = "Oops! Time ran out before you could clear the stage target.";
+        if(type === "ball-timeout") {
+            msg = "Oops! Target ball ka countdown 0 ho gaya! Game Over!";
+        }
+
         triggerCustomAlert(
             won ? "VICTORY!" : "GAME OVER! ⏳", 
-            won ? "You crushed it!" : "Oops! Time ran out before you could clear the stage target.", 
+            won ? "You crushed it!" : msg, 
             "RESTART GAME", 
             () => { 
                 resetGameSystem();
