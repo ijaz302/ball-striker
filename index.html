@@ -291,7 +291,6 @@
         }
     }
 
-    // Modern In-Game Alert System Trigger
     function triggerCustomAlert(title, text, actionText, callback) {
         if(alertTitle) alertTitle.innerText = title;
         if(alertText) alertText.innerText = text;
@@ -588,7 +587,6 @@
         
         if (currentStage < 10) {
             currentStage++;
-            // Replaced default alert with beautiful custom overlay panels
             triggerCustomAlert(
                 "STAGE CLEAR! 🎉", 
                 `Great Job! You successfully passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`, 
@@ -672,18 +670,18 @@
                     () => { if(instScreen) instScreen.classList.remove('hidden'); }
                 );
             }
-} else {
-        triggerCustomAlert(
-            "❌ GAME OVER!",
-            `Quiz Failed! You got ${correctAnswersCount}/5 correct.`,
-            "START NEW GAME",
-            () => {
-                if(quizScreen) quizScreen.classList.add('hidden');
-                // Aapke game ka apna bana hua function call hoga:
-                gameOver(false); 
-            }
-        );    
-    }
+        } else {
+            // FIXED QUIZ FAILED SYSTEM BY REMOVING OVERLAPPING ALERTS
+            if(quizScreen) quizScreen.classList.add('hidden');
+            triggerCustomAlert(
+                "❌ GAME OVER!",
+                `Quiz Failed! You got ${correctAnswersCount}/5 correct. Total wrong answers: ${5 - correctAnswersCount}.`,
+                "START NEW GAME",
+                () => {
+                    resetGameSystem();
+                    if(instScreen) instScreen.classList.remove('hidden'); 
+                }
+            );    
         }
     }
 
@@ -696,7 +694,10 @@
             won ? "VICTORY!" : "GAME OVER! ⏳", 
             won ? "You crushed it!" : "Oops! Time ran out before you could clear the stage target.", 
             "RESTART GAME", 
-            () => { resetGameSystem(); }
+            () => { 
+                resetGameSystem();
+                if(instScreen) instScreen.classList.remove('hidden');
+            }
         );
     }
 
