@@ -44,7 +44,7 @@
             border-radius: 8px;
             transition: 0.2s;
             position: relative;
-            z-index: 9999 !important;
+            z-index: 10005 !important;
             cursor: pointer;
         }
         .btn-arcade:hover {
@@ -54,14 +54,14 @@
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 7, 18, 0.95);
+            background: rgba(3, 7, 18, 0.98);
             border-radius: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            z-index: 9990;
+            z-index: 10000;
         }
         .hidden { display: none !important; }
         .quiz-option {
@@ -74,12 +74,12 @@
             border-radius: 5px;
             text-align: left;
             transition: 0.2s;
+            z-index: 10010;
         }
         .quiz-option:hover {
             background: #374151;
             border-color: #38bdf8;
         }
-        /* Custom Modern Alert Panel Box Style */
         .custom-panel-box {
             background: #1f2937;
             border: 2px solid #10b981;
@@ -88,6 +88,7 @@
             box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
             max-width: 85%;
             text-align: center;
+            z-index: 10002;
         }
     </style>
 </head>
@@ -106,7 +107,7 @@
     <canvas id="gameCanvas" width="500" height="350"></canvas>
 
     <div id="target-msg" class="text-info my-2 fw-bold">Click the glowing ball with the timer!</div>
-    <button id="start-btn" class="btn btn-arcade my-2" onclick="forceStartNewGame()">START NEW GAME</button>
+    <button id="start-btn" class="btn btn-arcade my-2">START NEW GAME</button>
 
     <div id="instructions-screen" class="overlay">
         <h4 id="inst-title" class="text-info mb-3">HOW TO PLAY</h4>
@@ -115,14 +116,14 @@
             2. Us ball ko 3+ same colors ke sath mila kar blast karein.<br>
             3. Stage 1 ka target **50** hai, aur har agli stage par **10 points** barhte jayenge!
         </p>
-        <button id="inst-close-btn" class="btn btn-arcade mt-3" onclick="forceCloseInstructions()">START GAME</button>
+        <button id="inst-close-btn" class="btn btn-arcade mt-3">START GAME</button>
     </div>
 
     <div id="alert-screen" class="overlay hidden">
         <div class="custom-panel-box">
             <h4 id="alert-title" class="text-success mb-3">STAGE CLEAR!</h4>
             <p id="alert-text" class="mb-4 text-light">Great Job! Ready for the next challenge?</p>
-            <button id="alert-action-btn" class="btn btn-arcade" onclick="closeCustomAlert()">CONTINUE</button>
+            <button id="alert-action-btn" class="btn btn-arcade">CONTINUE</button>
         </div>
     </div>
 
@@ -138,7 +139,7 @@
 <script>
     let canvas, ctx;
     let scoreText, levelText, stageText, timeText, targetMsg;
-    let instScreen, instTitle, instText, quizScreen, quizQuestion, quizOptionsContainer, quizProgressText;
+    let instScreen, instCloseBtn, startBtn, quizScreen, quizQuestion, quizOptionsContainer, quizProgressText;
     let alertScreen, alertTitle, alertText, alertActionBtn;
 
     let score = 0;
@@ -247,6 +248,9 @@
         targetMsg = document.getElementById('target-msg');
         
         instScreen = document.getElementById('instructions-screen');
+        instCloseBtn = document.getElementById('inst-close-btn');
+        startBtn = document.getElementById('start-btn');
+        
         quizScreen = document.getElementById('quiz-screen');
         quizQuestion = document.getElementById('quiz-question');
         quizOptionsContainer = document.getElementById('quiz-options');
@@ -257,7 +261,12 @@
         alertText = document.getElementById('alert-text');
         alertActionBtn = document.getElementById('alert-action-btn');
 
+        // Strong click binding via JavaScript
+        instCloseBtn.addEventListener('click', forceCloseInstructions);
+        startBtn.addEventListener('click', forceStartNewGame);
+        alertActionBtn.addEventListener('click', closeCustomAlert);
         canvas.addEventListener('click', handleCanvasClick);
+        
         updateHUD();
     });
 
@@ -671,7 +680,6 @@
                 );
             }
         } else {
-            // FIXED QUIZ FAILED SYSTEM BY REMOVING OVERLAPPING ALERTS
             if(quizScreen) quizScreen.classList.add('hidden');
             triggerCustomAlert(
                 "❌ GAME OVER!",
