@@ -672,18 +672,25 @@
                     () => { if(instScreen) instScreen.classList.remove('hidden'); }
                 );
             }
-        } else {
-            triggerCustomAlert(
-                "❌ QUIZ FAILED!", 
-                `You got ${correctAnswersCount}/5 correct. Let's reshuffle 5 new questions and try again!`, 
-                "RETRY QUIZ", 
-                () => {
-                    currentQuizIndex = 0;
-                    correctAnswersCount = 0;
-                    shuffleAndPickQuestions(); 
-                    loadQuizQuestion();
+} else {
+        triggerCustomAlert(
+            "❌ GAME OVER!",
+            `Quiz Failed! You got ${correctAnswersCount}/5 correct. Total wrong answers: ${5 - correctAnswersCount}.`,
+            "START NEW GAME",
+            () => {
+                // Quiz screens ko band karke main menu ya start screen par le jaane ke liye:
+                if(quizScreen) quizScreen.classList.add('hidden');
+                
+                // Pure game ko restart/reset karne wala function yahan call karein:
+                if (typeof resetGame === 'function') {
+                    resetGame(); 
+                } else {
+                    // Agar resetGame nahi bana hua, toh page reload ho jaye taake fresh start ho:
+                    location.reload();
                 }
-            );
+            }
+        );
+    }
         }
     }
 
