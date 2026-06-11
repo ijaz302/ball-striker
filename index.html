@@ -25,7 +25,7 @@
             text-align: center;
             position: relative;
             box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
-            width: 580px; /* Thoda wide kiya taake badi balls adjust ho sakein */
+            width: 580px; 
         }
         canvas { 
             background: #030712; 
@@ -154,13 +154,13 @@
 
     const rows = 8;
     const cols = 11;
-    const ballRadius = 20; // Balls ka size 15 se 20 kar diya
+    const ballRadius = 20; 
     let grid = []; 
     let explosions = [];
 
     let targetRow = -1;
     let targetCol = -1;
-    let targetBallTimer = 10; // Timer 5 se 10 seconds kar diya
+    let targetBallTimer = 10; 
     let pulseRadius = 20;
     let pulseGrowing = true;
 
@@ -333,7 +333,7 @@
 
                 targetBallTimer--;
                 if (targetBallTimer <= 0) {
-                    gameOver(false, "ball-timeout"); // Ball ka timer khatam hone par direct Game Over
+                    gameOver(false, "ball-timeout"); 
                 }
             } else if (timeLeft <= 0) {
                 gameOver(false, "total-timeout");
@@ -346,7 +346,6 @@
 
     function generateStaticGrid() {
         grid = [];
-        // Gap adjusting according to new radius 20
         const xOffset = 46;
         const yOffset = 42;
         const startX = 40;
@@ -384,7 +383,7 @@
             let choice = activeCells[Math.floor(Math.random() * activeCells.length)];
             targetRow = choice.r;
             targetCol = choice.c;
-            targetBallTimer = 10; // Naye ball ke liye bhi full 10 seconds mileinge
+            targetBallTimer = 10; // Reset target countdown securely back to 10
         } else {
             targetRow = -1;
             targetCol = -1;
@@ -436,7 +435,7 @@
 
                 if (r === targetRow && c === targetCol) {
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 14px sans-serif'; // text thoda bada kiya
+                    ctx.font = 'bold 14px sans-serif'; 
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(targetBallTimer, cell.x, cell.y);
@@ -511,7 +510,9 @@
 
                 applyBoardGravity();
 
+                // FIX: Agar target ball blast ho gayi hai toh countdown timer ko foran wapas 10 karo taake game over na ho
                 if (containsTarget || (grid[targetRow] && !grid[targetRow][targetCol].active)) {
+                    targetBallTimer = 10; 
                     pickNewRandomTargetBall();
                 }
 
@@ -726,6 +727,7 @@
         explosions = [];
         targetRow = -1;
         targetCol = -1;
+        targetBallTimer = 10; // Reset target timer value securely
         updateHUD();
         if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(quizScreen) quizScreen.classList.add('hidden');
