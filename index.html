@@ -111,11 +111,11 @@
 
     <div id="instructions-screen" class="overlay">
         <h4 id="inst-title" class="text-info mb-3">HOW TO PLAY</h4>
-        <p id="inst-text" class="px-4 text-center">
-            1. Board par ruki hui balls mein se **EK glowing ball** par countdown chalega.<br>
-            2. Us ball ko 3+ same colors ke sath mila kar blast karein.<br>
-            3. **ALERT!** Agar ball ka timer 0 hua toh direct **GAME OVER** ho jayega!<br>
-            4. Stage 1 ka target **50** hai, har stage par 10 points barhte jayenge!
+        <p id="inst-text" class="px-4 text-center" style="line-height: 1.6;">
+            1. Look at the board and find the **glowing target ball** with a countdown timer.<br>
+            2. Match and pop that target ball with **3 or more same-color balls** to score points.<br>
+            3. **CRITICAL ALERT:** If the ball's individual timer hits **0**, it's an instant **GAME OVER**!<br>
+            4. Reach the target score of **50 points** to clear Stage 1. Target increases by +10 points each stage!
         </p>
         <button id="inst-close-btn" class="btn btn-arcade mt-3">START GAME</button>
     </div>
@@ -383,7 +383,7 @@
             let choice = activeCells[Math.floor(Math.random() * activeCells.length)];
             targetRow = choice.r;
             targetCol = choice.c;
-            targetBallTimer = 10; // Reset target countdown securely back to 10
+            targetBallTimer = 10; 
         } else {
             targetRow = -1;
             targetCol = -1;
@@ -510,7 +510,6 @@
 
                 applyBoardGravity();
 
-                // FIX: Agar target ball blast ho gayi hai toh countdown timer ko foran wapas 10 karo taake game over na ho
                 if (containsTarget || (grid[targetRow] && !grid[targetRow][targetCol].active)) {
                     targetBallTimer = 10; 
                     pickNewRandomTargetBall();
@@ -727,7 +726,7 @@
         explosions = [];
         targetRow = -1;
         targetCol = -1;
-        targetBallTimer = 10; // Reset target timer value securely
+        targetBallTimer = 10; 
         updateHUD();
         if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(quizScreen) quizScreen.classList.add('hidden');
