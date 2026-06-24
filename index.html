@@ -7,45 +7,55 @@
         body { margin: 0; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
         #game-container { text-align: center; }
         canvas { border: 4px solid #38bdf8; background: #000; cursor: crosshair; display: none; }
-        .btn { padding: 20px 40px; background: #38bdf8; border: none; border-radius: 10px; cursor: pointer; font-size: 24px; font-weight: bold; }
+        .btn { padding: 20px 40px; background: #38bdf8; border: none; border-radius: 10px; cursor: pointer; font-size: 24px; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
     <h1 id="title">TARGET TIMER PUZZLE</h1>
-    <button id="start-btn" class="btn" onclick="start()">START NEW GAME</button>
+    <button id="start-btn" class="btn" onclick="start()">START GAME</button>
     <canvas id="gameCanvas" width="500" height="300"></canvas>
-    <p id="score-board">Score: 0</p>
+    <p>Score: <span id="score">0</span></p>
 </div>
 
 <script>
-    let score = 0, gameActive = false;
+    let score = 0, balls = [];
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    let target = { x: 250, y: 150, r: 40 };
 
     function start() {
         document.getElementById('start-btn').style.display = 'none';
         canvas.style.display = 'block';
-        gameActive = true;
+        setInterval(spawnBall, 1000); // Har 1 sec mein nayi ball
         animate();
     }
 
+    function spawnBall() {
+        balls.push({ x: Math.random()*460+20, y: Math.random()*260+20, r: 20 });
+    }
+
     canvas.onclick = (e) => {
-        score += 10;
-        document.getElementById('score-board').innerText = "Score: " + score;
-        target.x = Math.random() * 400 + 50;
-        target.y = Math.random() * 200 + 50;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        
+        balls.forEach((b, i) => {
+            const dist = Math.hypot(mx - b.x, my - b.y);
+            if(dist < b.r) {
+                balls.splice(i, 1);
+                score += 10;
+                document.getElementById('score').innerText = score;
+            }
+        });
     };
 
     function animate() {
-        if(!gameActive) return;
         ctx.clearRect(0, 0, 500, 300);
         ctx.fillStyle = "#ef4444";
-        ctx.beginPath();
-        ctx.arc(target.x, target.y, target.r, 0, Math.PI*2);
-        ctx.fill();
+        balls.forEach(b => {
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+        });
         requestAnimationFrame(animate);
     }
 </script>
