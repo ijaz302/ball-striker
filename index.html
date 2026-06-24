@@ -1,57 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Target Timer Puzzle</title>
     <style>
-        body { background: #0b1e3a; color: white; text-align: center; font-family: sans-serif; }
-        canvas { background: #000; border: 4px solid #00d4ff; cursor: crosshair; }
+        body { background: #0b1e3a; color: white; text-align: center; font-family: sans-serif; margin: 0; }
+        canvas { background: #000; border: 4px solid #00d4ff; margin-top: 20px; cursor: crosshair; }
     </style>
 </head>
 <body>
-    <h2>Level: <span id="level">1</span> | Stage: <span id="stage">1</span> | Time: <span id="timer">5</span>s</h2>
+    <h2>Level: <span id="level">1</span> | Timer: <span id="timer">10</span>s</h2>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <p>Score: <span id="score">0</span></p>
 
-<script>
-    let score = 0, level = 1, stage = 1, timeLeft = 5;
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    <script>
+        let score = 0, timeLeft = 10;
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    // Timer Logic
-    const timerInterval = setInterval(() => {
-        timeLeft--;
-        document.getElementById('timer').innerText = timeLeft;
-        if(timeLeft <= 0) {
-            alert("Game Over! Score: " + score);
-            location.reload();
+        function drawBall() {
+            ctx.clearRect(0, 0, 400, 400);
+            ctx.fillStyle = "#ff4d4d";
+            ctx.beginPath();
+            ctx.arc(Math.random() * 300 + 50, Math.random() * 300 + 50, 20, 0, Math.PI * 2);
+            ctx.fill();
         }
-    }, 1000);
 
-    function draw() {
-        ctx.clearRect(0,0,400,400);
-        // Random ball position
-        ctx.fillStyle = "#ff4d4d";
-        ctx.beginPath();
-        ctx.arc(Math.random()*350+25, Math.random()*350+25, 20, 0, Math.PI*2);
-        ctx.fill();
-    }
+        canvas.onclick = () => {
+            score += 10;
+            timeLeft = 10;
+            document.getElementById('score').innerText = score;
+            drawBall();
+        };
 
-    canvas.onclick = () => {
-        score += 100;
-        timeLeft = 5; // Reset timer
-        document.getElementById('score').innerText = score;
-        
-        stage++;
-        if(stage > 100) {
-            level++;
-            stage = 1;
-            alert("Level Up! Gift Reward: You won a shiny badge!");
-        }
-        document.getElementById('level').innerText = level;
-        document.getElementById('stage').innerText = stage;
-        draw();
-    };
+        setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            if (timeLeft <= 0) {
+                alert("Game Over! Final Score: " + score);
+                score = 0; timeLeft = 10;
+                document.getElementById('score').innerText = score;
+            }
+        }, 1000);
 
-    draw();
-</script>
+        drawBall();
+    </script>
 </body>
 </html>
