@@ -2,27 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Game</title>
+    <title>Target Timer Puzzle</title>
     <style>
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .box { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 2px solid #38bdf8; }
-        .btn { padding: 20px 40px; font-size: 20px; background: #38bdf8; border: none; border-radius: 10px; color: white; cursor: pointer; }
+        body { margin: 0; background: #0f172a; color: white; text-align: center; font-family: sans-serif; }
+        #game-box { display: flex; flex-direction: column; align-items: center; padding-top: 50px; }
+        canvas { background: #000; border: 4px solid #38bdf8; border-radius: 10px; display: none; }
+        .btn { padding: 20px 40px; background: #38bdf8; border: none; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="box">
+<div id="game-box">
     <h1>TARGET TIMER PUZZLE</h1>
-    <p>Professional Edition - Ready for CrazyGames</p>
-    <button class="btn" onclick="startNewGame()">START NEW GAME</button>
+    <button id="start-btn" class="btn" onclick="startNewGame()">START NEW GAME</button>
+    <canvas id="gameCanvas" width="500" height="300"></canvas>
+    <p id="score-board">Score: 0</p>
 </div>
 
 <script>
+    let score = 0;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
     function startNewGame() {
-        alert("Game shuru ho gayi! Ab aap canvas par kaam shuru kar sakte hain.");
+        document.getElementById('start-btn').style.display = 'none';
+        canvas.style.display = 'block';
+        gameLoop();
+    }
+
+    canvas.onclick = (e) => {
+        score += 10;
+        document.getElementById('score-board').innerText = "Score: " + score;
+        // Yahan aap pop effect daal sakte hain
+    };
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, 500, 300);
+        ctx.fillStyle = "#ff3e3e";
+        ctx.beginPath();
+        ctx.arc(250, 150, 50, 0, Math.PI * 2);
+        ctx.fill();
+        requestAnimationFrame(gameLoop);
     }
 </script>
-
 </body>
 </html>
