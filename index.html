@@ -2,58 +2,53 @@
 <html>
 <head>
     <style>
-        body { background: #0b1e3a; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
-        canvas { background: #001529; border: 3px solid #00d4ff; border-radius: 10px; margin-top: 20px; }
-        .ui { text-align: center; margin-top: 10px; }
+        body { background: #0b1e3a; color: white; text-align: center; font-family: sans-serif; }
+        canvas { background: #000; border: 4px solid #00d4ff; cursor: crosshair; }
     </style>
 </head>
 <body>
-
-<div class="ui">
-    <h2>TARGET TIMER PUZZLE</h2>
-    <p>Score: <span id="score">0</span> | Level: 1/50</p>
-</div>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
+    <h2>Level: <span id="level">1</span> | Stage: <span id="stage">1</span> | Time: <span id="timer">5</span>s</h2>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <p>Score: <span id="score">0</span></p>
 
 <script>
+    let score = 0, level = 1, stage = 1, timeLeft = 5;
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const rows = 8, cols = 10;
-    const cellSize = 38;
-    let score = 0;
 
-    // Grid initialize karna
-    let grid = [];
-    for(let i=0; i<rows; i++) {
-        grid[i] = [];
-        for(let j=0; j<cols; j++) {
-            grid[i][j] = Math.random() > 0.5 ? '#ff4d4d' : '#00d4ff'; // Red aur Blue balls
+    // Timer Logic
+    const timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').innerText = timeLeft;
+        if(timeLeft <= 0) {
+            alert("Game Over! Score: " + score);
+            location.reload();
         }
-    }
+    }, 1000);
 
     function draw() {
-        ctx.clearRect(0, 0, 400, 400);
-        for(let i=0; i<rows; i++) {
-            for(let j=0; j<cols; j++) {
-                ctx.fillStyle = grid[i][j];
-                ctx.beginPath();
-                ctx.arc(j*cellSize+20, i*cellSize+20, 15, 0, Math.PI*2);
-                ctx.fill();
-            }
-        }
+        ctx.clearRect(0,0,400,400);
+        // Random ball position
+        ctx.fillStyle = "#ff4d4d";
+        ctx.beginPath();
+        ctx.arc(Math.random()*350+25, Math.random()*350+25, 20, 0, Math.PI*2);
+        ctx.fill();
     }
 
-    canvas.onclick = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        let col = Math.floor((e.clientX - rect.left) / cellSize);
-        let row = Math.floor((e.clientY - rect.top) / cellSize);
+    canvas.onclick = () => {
+        score += 100;
+        timeLeft = 5; // Reset timer
+        document.getElementById('score').innerText = score;
         
-        if(grid[row] && grid[row][col]) {
-            grid[row][col] = null; // Ball gayab
-            score += 10;
-            document.getElementById('score').innerText = score;
-            draw();
+        stage++;
+        if(stage > 100) {
+            level++;
+            stage = 1;
+            alert("Level Up! Gift Reward: You won a shiny badge!");
         }
+        document.getElementById('level').innerText = level;
+        document.getElementById('stage').innerText = stage;
+        draw();
     };
 
     draw();
