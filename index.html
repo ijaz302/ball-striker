@@ -1,49 +1,738 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Target Timer Puzzle</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #0b1e3a; color: white; text-align: center; font-family: sans-serif; margin: 0; }
-        canvas { background: #000; border: 4px solid #00d4ff; margin-top: 20px; cursor: crosshair; }
+        body { 
+            background: #090d16; 
+            color: #fff; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .game-container { 
+            background: #111827; 
+            border: 2px solid #38bdf8; 
+            border-radius: 20px; 
+            padding: 15px; 
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+            width: 580px; 
+        }
+        canvas { 
+            background: #030712; 
+            display: block; 
+            margin: 10px auto; 
+            border: 2px solid #0284c7; 
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .btn-arcade { 
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); 
+            border: 1px solid #fff; 
+            color: white;
+            font-weight: bold;
+            padding: 10px 25px;
+            border-radius: 8px;
+            transition: 0.2s;
+            position: relative;
+            z-index: 10005 !important;
+            cursor: pointer;
+        }
+        .btn-arcade:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px #38bdf8;
+        }
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 7, 18, 0.98);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 10000;
+        }
+        .hidden { display: none !important; }
+        .quiz-option {
+            width: 80%;
+            margin: 5px 0;
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: left;
+            transition: 0.2s;
+            z-index: 10010;
+        }
+        .quiz-option:hover {
+            background: #374151;
+            border-color: #38bdf8;
+        }
+        .custom-panel-box {
+            background: #1f2937;
+            border: 2px solid #10b981;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+            max-width: 85%;
+            text-align: center;
+            z-index: 10002;
+        }
     </style>
 </head>
 <body>
-    <h2>Level: <span id="level">1</span> | Timer: <span id="timer">10</span>s</h2>
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
-    <p>Score: <span id="score">0</span></p>
 
-    <script>
-        let score = 0, timeLeft = 10;
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+<div class="game-container">
+    <h3 style="color: #38bdf8; letter-spacing: 1px;">TARGET TIMER PUZZLE</h3>
+    
+    <div class="d-flex justify-content-around fw-bold my-2">
+        <div>SCORE: <span id="score" style="color: #10b981;">0</span></div>
+        <div class="text-warning">LEVEL: <span id="level-display">1</span>/50</div>
+        <div class="text-warning">STAGE: <span id="stage-display">1</span>/10</div>
+        <div class="text-danger">TOTAL TIME: <span id="time">120</span>s</div>
+    </div>
 
-        function drawBall() {
-            ctx.clearRect(0, 0, 400, 400);
-            ctx.fillStyle = "#ff4d4d";
-            ctx.beginPath();
-            ctx.arc(Math.random() * 300 + 50, Math.random() * 300 + 50, 20, 0, Math.PI * 2);
-            ctx.fill();
+    <canvas id="gameCanvas" width="540" height="400"></canvas>
+
+    <div id="target-msg" class="text-info my-2 fw-bold">Click the glowing ball before its timer hits 0!</div>
+    <button id="start-btn" class="btn btn-arcade my-2">START NEW GAME</button>
+
+    <div id="instructions-screen" class="overlay">
+        <h4 id="inst-title" class="text-info mb-3">HOW TO PLAY</h4>
+        <p id="inst-text" class="px-4 text-center" style="line-height: 1.6;">
+            1. Look at the board and find the **glowing target ball** with a countdown timer.<br>
+            2. Match and pop that target ball with **3 or more same-color balls** to score points.<br>
+            3. **CRITICAL ALERT:** If the ball's individual timer hits **0**, it's an instant **GAME OVER**!<br>
+            4. Reach the target score of **50 points** to clear Stage 1. Target increases by +10 points each stage!
+        </p>
+        <button id="inst-close-btn" class="btn btn-arcade mt-3">START GAME</button>
+    </div>
+
+    <div id="alert-screen" class="overlay hidden">
+        <div class="custom-panel-box">
+            <h4 id="alert-title" class="text-success mb-3">STAGE CLEAR!</h4>
+            <p id="alert-text" class="mb-4 text-light">Great Job! Ready for the next challenge?</p>
+            <button id="alert-action-btn" class="btn btn-arcade">CONTINUE</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="overlay hidden">
+        <h4 class="text-warning mb-2">LEVEL CHALLENGE QUIZ</h4>
+        <p class="text-muted small">Answer 5 unique questions correctly to unlock the next level!</p>
+        <h5 id="quiz-question" class="my-3 text-center">Question goes here?</h5>
+        <div id="quiz-options" class="d-flex flex-column align-items-center w-100"></div>
+        <div id="quiz-progress" class="mt-3 text-info fw-bold">Question: 1/5</div>
+    </div>
+</div>
+
+<script>
+    let canvas, ctx;
+    let scoreText, levelText, stageText, timeText, targetMsg;
+    let instScreen, instCloseBtn, startBtn, quizScreen, quizQuestion, quizOptionsContainer, quizProgressText;
+    let alertScreen, alertTitle, alertText, alertActionBtn;
+
+    let score = 0;
+    let currentStage = 1;
+    let currentLevel = 1;
+    let timeLeft = 120; 
+    let timerInterval = null;
+    let isGameRunning = false;
+    let animationFrameId = null;
+    let onAlertConfirmCallback = null;
+
+    const rows = 8;
+    const cols = 11;
+    const ballRadius = 20; 
+    let grid = []; 
+    let explosions = [];
+
+    let targetRow = -1;
+    let targetCol = -1;
+    let targetBallTimer = 10; 
+    let pulseRadius = 20;
+    let pulseGrowing = true;
+
+    const ballColors = [
+        { name: 'Red', hex: '#f43f5e' },
+        { name: 'Blue', hex: '#3b82f6' },
+        { name: 'Green', hex: '#10b981' }
+    ];
+
+    const masterQuizBank = [
+        { q: "Which planet is known as the Red Planet?", a: ["Venus", "Mars", "Jupiter"], c: 1 },
+        { q: "How many hours are there in a single day?", a: ["12 Hours", "24 Hours", "48 Hours"], c: 1 },
+        { q: "Which is the largest ocean on Earth?", a: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean"], c: 0 },
+        { q: "What is the center of an atom called?", a: ["Electron", "Nucleus", "Orbit"], c: 1 },
+        { q: "Which gas do humans breathe out?", a: ["Oxygen", "Carbon Dioxide", "Nitrogen"], c: 1 },
+        { q: "How many colors are there in a rainbow?", a: ["5 Colors", "7 Colors", "9 Colors"], c: 1 },
+        { q: "Which animal is known as the Ship of the Desert?", a: ["Camel", "Horse", "Elephant"], c: 0 },
+        { q: "What is the boiling point of pure water?", a: ["50°C", "100°C", "150°C"], c: 1 },
+        { q: "Which is the fastest land animal on Earth?", a: ["Lion", "Cheetah", "Leopard"], c: 1 },
+        { q: "Which country is famous for the Pyramids?", a: ["Egypt", "Italy", "Greece"], c: 0 },
+        { q: "How many days are there in a normal calendar year?", a: ["350 Days", "365 Days", "366 Days"], c: 1 },
+        { q: "Which planet is closest to the Sun?", a: ["Mercury", "Earth", "Venus"], c: 0 },
+        { q: "What is the primary source of energy for Earth?", a: ["The Moon", "The Sun", "Volcanoes"], c: 1 },
+        { q: "Which shape has three sides?", a: ["Square", "Triangle", "Circle"], c: 1 },
+        { q: "What is the standard color of leaves due to chlorophyll?", a: ["Red", "Green", "Yellow"], c: 1 },
+        { q: "Which is the largest planet in our solar system?", a: ["Saturn", "Jupiter", "Neptune"], c: 1 },
+        { q: "How many bones are there in an adult human body?", a: ["206 Bones", "306 Bones", "156 Bones"], c: 0 },
+        { q: "Which gas do plants absorb from the atmosphere?", a: ["Oxygen", "Carbon Dioxide", "Hydrogen"], c: 1 },
+        { q: "Which place on Earth is known as the Roof of the World?", a: ["Alps", "Tibetan Plateau", "Andes"], c: 1 },
+        { q: "What is the currency of the United States?", a: ["Euro", "Dollar", "Pound"], c: 1 },
+        { q: "Which instrument is used to measure temperature?", a: ["Barometer", "Thermometer", "Speedometer"], c: 1 },
+        { q: "Which is the tallest mountain on Earth?", a: ["K2", "Mount Everest", "Kangchenjunga"], c: 1 },
+        { q: "How many continents are there on Earth?", a: ["5", "6", "7"], c: 2 },
+        { q: "Which country is home to the Kangaroo?", a: ["Africa", "Australia", "New Zealand"], c: 1 },
+        { q: "What freezes at 0 degrees Celsius?", a: ["Milk", "Water", "Oil"], c: 1 },
+        { q: "Which component gives blood its red color?", a: ["Plasma", "Hemoglobin", "White Cells"], c: 1 },
+        { q: "Which is the largest animal currently living on Earth?", a: ["Elephant", "Blue Whale", "Giraffe"], c: 1 },
+        { q: "How many teeth does a normal human adult have?", a: ["28", "32", "36"], c: 1 },
+        { q: "Which star is closest to the Earth?", a: ["Sirius", "The Sun", "Alpha Centauri"], c: 1 },
+        { q: "What is the opposite of the word 'Heavy'?", a: ["Soft", "Light", "Thin"], c: 1 },
+        { q: "Which organ filters blood inside the human body?", a: ["Heart", "Kidneys", "Lungs"], c: 1 },
+        { q: "Which is the smallest continent in the world?", a: ["Europe", "Australia", "Antarctica"], c: 1 },
+        { q: "What is the main ingredient used to make bread?", a: ["Rice", "Flour", "Potato"], c: 1 },
+        { q: "Which bird is famous for its beautiful dancing in rain?", a: ["Peacock", "Sparrow", "Eagle"], c: 0 },
+        { q: "Which sensory organ is used for hearing?", a: ["Eyes", "Ears", "Nose"], c: 1 },
+        { q: "How many weeks are there in a full year?", a: ["48 Weeks", "52 Weeks", "60 Weeks"], c: 1 },
+        { q: "Which force pulls everything towards the ground?", a: ["Magnetism", "Gravity", "Friction"], c: 1 },
+        { q: "Which metal is liquid at room temperature?", a: ["Iron", "Mercury", "Gold"], c: 1 },
+        { q: "What do bees collect from flowers to make honey?", a: ["Water", "Nectar", "Leaves"], c: 1 },
+        { q: "Which is the tallest animal on Earth?", a: ["Elephant", "Giraffe", "Ostrich"], c: 1 },
+        { q: "Which gas is filled inside air balloons to make them fly?", a: ["Nitrogen", "Helium", "Oxygen"], c: 1 },
+        { q: "What is the square root of 64?", a: ["6", "8", "10"], c: 1 },
+        { q: "Which country is shaped like a boot?", a: ["France", "Italy", "Spain"], c: 1 },
+        { q: "Which vitamin do we get naturally from sunlight?", a: ["Vitamin A", "Vitamin D", "Vitamin C"], c: 1 },
+        { q: "How many millimeter make up 1 centimeter?", a: ["10 mm", "100 mm", "1000 mm"], c: 0 },
+        { q: "Which is the hardest natural substance on Earth?", a: ["Gold", "Diamond", "Iron"], c: 1 },
+        { q: "Which chemical element does 'O' stand for in science?", a: ["Osmium", "Oxygen", "Ozone"], c: 1 },
+        { q: "Which process is used by plants to prepare food?", a: ["Respiration", "Photosynthesis", "Evaporation"], c: 1 },
+        { q: "Which organ pumps blood to the entire body?", a: ["Lungs", "Heart", "Brain"], c: 1 },
+        { q: "What is the primary color blend of Yellow and Blue?", a: ["Red", "Green", "Purple"], c: 1 },
+        { q: "How many sides does a hexagon have?", a: ["5 Sides", "6 Sides", "8 Sides"], c: 1 },
+        { q: "Which planet has beautiful prominent rings around it?", a: ["Mars", "Saturn", "Neptune"], c: 1 },
+        { q: "What is the currency of the United Kingdom?", a: ["Dollar", "Pound", "Euro"], c: 1 },
+        { q: "Which is the largest desert in the world?", a: ["Gobi", "Sahara", "Thar"], c: 1 },
+        { q: "Which gas protects Earth from harmful UV rays?", a: ["Oxygen", "Ozone", "Nitrogen"], c: 1 },
+        { q: "How many years are there in a decade?", a: ["10 Years", "50 Years", "100 Years"], c: 0 },
+        { q: "Which part of the plant stays under the ground?", a: ["Stem", "Roots", "Leaves"], c: 1 },
+        { q: "What do we call a baby dog?", a: ["Kitten", "Puppy", "Calf"], c: 1 },
+        { q: "Which gas is most abundant in Earth's atmosphere?", a: ["Oxygen", "Nitrogen", "Carbon Dioxide"], c: 1 },
+        { q: "Which is the smallest planet in our solar system?", a: ["Mars", "Mercury", "Venus"], c: 1 }
+    ];
+
+    let unusedQuizPool = [...masterQuizBank]; 
+    let sessionQuizQuestions = []; 
+    let currentQuizIndex = 0;
+    let correctAnswersCount = 0;
+
+    window.addEventListener('load', () => {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+
+        scoreText = document.getElementById('score');
+        levelText = document.getElementById('level-display');
+        stageText = document.getElementById('stage-display');
+        timeText = document.getElementById('time');
+        targetMsg = document.getElementById('target-msg');
+        
+        instScreen = document.getElementById('instructions-screen');
+        instCloseBtn = document.getElementById('inst-close-btn');
+        startBtn = document.getElementById('start-btn');
+        
+        quizScreen = document.getElementById('quiz-screen');
+        quizQuestion = document.getElementById('quiz-question');
+        quizOptionsContainer = document.getElementById('quiz-options');
+        quizProgressText = document.getElementById('quiz-progress');
+
+        alertScreen = document.getElementById('alert-screen');
+        alertTitle = document.getElementById('alert-title');
+        alertText = document.getElementById('alert-text');
+        alertActionBtn = document.getElementById('alert-action-btn');
+
+        instCloseBtn.addEventListener('click', forceCloseInstructions);
+        startBtn.addEventListener('click', forceStartNewGame);
+        alertActionBtn.addEventListener('click', closeCustomAlert);
+        canvas.addEventListener('click', handleCanvasClick);
+        
+        updateHUD();
+    });
+
+    function forceCloseInstructions() {
+        if(instScreen) instScreen.classList.add('hidden');
+        initGame();
+    }
+
+    function forceStartNewGame() {
+        resetGameSystem();
+        if(instScreen) instScreen.classList.remove('hidden');
+    }
+
+    function getTargetForStage(stage) {
+        return 50 + ((stage - 1) * 10); 
+    }
+
+    function updateHUD() {
+        if(scoreText) scoreText.innerText = score;
+        if(levelText) levelText.innerText = currentLevel;
+        if(stageText) stageText.innerText = currentStage;
+        if(timeText) timeText.innerText = timeLeft;
+        
+        let req = getTargetForStage(currentStage);
+        if(targetMsg) {
+            if (currentStage < 10) {
+                targetMsg.innerText = `Get ${req} points to unlock Stage ${currentStage + 1}!`;
+            } else {
+                targetMsg.innerText = `Get ${req} points to unlock Level ${currentLevel} Quiz!`;
+            }
         }
+    }
 
-        canvas.onclick = () => {
-            score += 10;
-            timeLeft = 10;
-            document.getElementById('score').innerText = score;
-            drawBall();
-        };
+    function triggerCustomAlert(title, text, actionText, callback) {
+        if(alertTitle) alertTitle.innerText = title;
+        if(alertText) alertText.innerText = text;
+        if(alertActionBtn) alertActionBtn.innerText = actionText;
+        onAlertConfirmCallback = callback;
+        if(alertScreen) alertScreen.classList.remove('hidden');
+    }
 
-        setInterval(() => {
-            timeLeft--;
-            document.getElementById('timer').innerText = timeLeft;
-            if (timeLeft <= 0) {
-                alert("Game Over! Final Score: " + score);
-                score = 0; timeLeft = 10;
-                document.getElementById('score').innerText = score;
+    function closeCustomAlert() {
+        if(alertScreen) alertScreen.classList.add('hidden');
+        if (onAlertConfirmCallback) {
+            onAlertConfirmCallback();
+            onAlertConfirmCallback = null;
+        }
+    }
+
+    function initGame() {
+        isGameRunning = true;
+        score = 0;
+        timeLeft = 120; 
+        explosions = [];
+        generateStaticGrid();
+        pickNewRandomTargetBall();
+        updateHUD();
+
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (timeLeft > 0 && isGameRunning) {
+                timeLeft--;
+                if(timeText) timeText.innerText = timeLeft;
+
+                targetBallTimer--;
+                if (targetBallTimer <= 0) {
+                    gameOver(false, "ball-timeout"); 
+                }
+            } else if (timeLeft <= 0) {
+                gameOver(false, "total-timeout");
             }
         }, 1000);
 
-        drawBall();
-    </script>
+        if(animationFrameId) cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function generateStaticGrid() {
+        grid = [];
+        const xOffset = 46;
+        const yOffset = 42;
+        const startX = 40;
+        const startY = 45;
+
+        for (let r = 0; r < rows; r++) {
+            grid[r] = [];
+            for (let c = 0; c < cols; c++) {
+                let shiftX = (r % 2 === 0) ? 0 : xOffset / 2;
+                let posX = startX + (c * xOffset) + shiftX;
+                let posY = startY + (r * yOffset);
+                let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+
+                grid[r][c] = {
+                    x: posX,
+                    y: posY,
+                    colorHex: randColor.hex,
+                    active: true
+                };
+            }
+        }
+    }
+
+    function pickNewRandomTargetBall() {
+        let activeCells = [];
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (grid[r][c] && grid[r][c].active) {
+                    activeCells.push({r: r, c: c});
+                }
+            }
+        }
+
+        if (activeCells.length > 0) {
+            let choice = activeCells[Math.floor(Math.random() * activeCells.length)];
+            targetRow = choice.r;
+            targetCol = choice.c;
+            targetBallTimer = 10; 
+        } else {
+            targetRow = -1;
+            targetCol = -1;
+        }
+    }
+
+    function gameLoop() {
+        if (!isGameRunning) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (pulseGrowing) {
+            pulseRadius += 0.2;
+            if (pulseRadius >= 28) pulseGrowing = false;
+        } else {
+            pulseRadius -= 0.2;
+            if (pulseRadius <= 20) pulseGrowing = true;
+        }
+
+        drawStaticGrid();
+        drawExplosions();
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function drawStaticGrid() {
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let cell = grid[r][c];
+                if (!cell || !cell.active) continue;
+
+                if (r === targetRow && c === targetCol) {
+                    ctx.beginPath();
+                    ctx.arc(cell.x, cell.y, pulseRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+
+                ctx.beginPath();
+                ctx.arc(cell.x, cell.y, ballRadius, 0, Math.PI * 2);
+                ctx.fillStyle = cell.colorHex;
+                ctx.fill();
+                ctx.strokeStyle = (r === targetRow && c === targetCol) ? '#38bdf8' : '#ffffff';
+                ctx.lineWidth = (r === targetRow && c === targetCol) ? 2 : 1;
+                ctx.stroke();
+                ctx.closePath();
+
+                if (r === targetRow && c === targetCol) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 14px sans-serif'; 
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(targetBallTimer, cell.x, cell.y);
+                }
+            }
+        }
+    }
+
+    function drawExplosions() {
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            let exp = explosions[i];
+            exp.radius += 2;
+            exp.alpha -= 0.05;
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, exp.alpha);
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.restore();
+
+            if (exp.alpha <= 0) {
+                explosions.splice(i, 1);
+            }
+        }
+    }
+
+    function handleCanvasClick(e) {
+        if (!isGameRunning) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        let clickedRow = -1, clickedCol = -1;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let cell = grid[r][c];
+                if (cell && cell.active) {
+                    let dist = Math.hypot(clickX - cell.x, clickY - cell.y);
+                    if (dist <= ballRadius) {
+                        clickedRow = r;
+                        clickedCol = c;
+                        break;
+                    }
+                }
+            }
+            if (clickedRow !== -1) break;
+        }
+
+        if (clickedRow !== -1 && clickedCol !== -1) {
+            let startCell = grid[clickedRow][clickedCol];
+            let matchedCluster = findConnectedCluster(clickedRow, clickedCol, startCell.colorHex);
+
+            if (matchedCluster.length >= 3) {
+                let containsTarget = false;
+
+                matchedCluster.forEach(pos => {
+                    let cell = grid[pos.r][pos.c];
+                    cell.active = false;
+                    explosions.push({x: cell.x, y: cell.y, radius: ballRadius, maxRadius: 30, alpha: 1});
+                    
+                    if (pos.r === targetRow && pos.c === targetCol) {
+                        containsTarget = true;
+                    }
+                });
+
+                score += 5;
+                updateHUD();
+
+                applyBoardGravity();
+
+                if (containsTarget || (grid[targetRow] && !grid[targetRow][targetCol].active)) {
+                    targetBallTimer = 10; 
+                    pickNewRandomTargetBall();
+                }
+
+                let required = getTargetForStage(currentStage);
+                if (score >= required) {
+                    advanceStage();
+                }
+            }
+        }
+    }
+
+    function findConnectedCluster(startRow, startCol, targetColor) {
+        let cluster = [];
+        let visited = new Set();
+        let queue = [{r: startRow, c: startCol}];
+        visited.add(`${startRow},${startCol}`);
+
+        while (queue.length > 0) {
+            let curr = queue.shift();
+            cluster.push(curr);
+
+            let neighbors = getHexNeighbors(curr.r, curr.c);
+            neighbors.forEach(n => {
+                let key = `${n.r},${n.c}`;
+                if (!visited.has(key) && n.r >= 0 && n.r < rows && n.c >= 0 && n.c < cols) {
+                    let cell = grid[n.r][n.c];
+                    if (cell && cell.active && cell.colorHex === targetColor) {
+                        visited.add(key);
+                        queue.push(n);
+                    }
+                }
+            });
+        }
+        return cluster;
+    }
+
+    function getHexNeighbors(r, c) {
+        let neighbors = [];
+        neighbors.push({r: r, c: c - 1});
+        neighbors.push({r: r, c: c + 1});
+
+        if (r % 2 === 0) {
+            neighbors.push({r: r - 1, c: c - 1});
+            neighbors.push({r: r - 1, c: c});
+            neighbors.push({r: r + 1, c: c - 1});
+            neighbors.push({r: r + 1, c: c});
+        } else {
+            neighbors.push({r: r - 1, c: c});
+            neighbors.push({r: r - 1, c: c + 1});
+            neighbors.push({r: r + 1, c: c});
+            neighbors.push({r: r + 1, c: c + 1});
+        }
+        return neighbors;
+    }
+
+    function applyBoardGravity() {
+        for (let c = 0; c < cols; c++) {
+            let activeColors = [];
+            for (let r = rows - 1; r >= 0; r--) {
+                if (grid[r][c].active) {
+                    activeColors.push(grid[r][c].colorHex);
+                }
+            }
+
+            while (activeColors.length < rows) {
+                let randColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+                activeColors.push(randColor.hex);
+            }
+
+            let idx = 0;
+            for (let r = rows - 1; r >= 0; r--) {
+                grid[r][c].colorHex = activeColors[idx];
+                grid[r][c].active = true;
+                idx++;
+            }
+        }
+    }
+
+    function advanceStage() {
+        isGameRunning = false;
+        if(animationFrameId) cancelAnimationFrame(animationFrameId);
+        if(timerInterval) clearInterval(timerInterval);
+        
+        if (currentStage < 10) {
+            currentStage++;
+            triggerCustomAlert(
+                "STAGE CLEAR! 🎉", 
+                `Great Job! You successfully passed Stage ${currentStage - 1}. Ready for Stage ${currentStage}?`, 
+                "START NEXT STAGE", 
+                () => { initGame(); }
+            );
+        } else {
+            triggerCustomAlert(
+                "STAGE 10 COMPLETE! 🔥", 
+                "Unbelievable skills! You have cleared all 10 stages. Now prepare for the Level Quiz challenge!", 
+                "START LEVEL QUIZ", 
+                () => { showQuizModal(); }
+            );
+        }
+    }
+
+    function shuffleAndPickQuestions() {
+        if (unusedQuizPool.length < 5) {
+            unusedQuizPool = [...masterQuizBank];
+        }
+        for (let i = unusedQuizPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [unusedQuizPool[i], unusedQuizPool[j]] = [unusedQuizPool[j], unusedQuizPool[i]];
+        }
+        sessionQuizQuestions = unusedQuizPool.splice(0, 5);
+    }
+
+    function showQuizModal() {
+        if(quizScreen) quizScreen.classList.remove('hidden');
+        currentQuizIndex = 0;
+        correctAnswersCount = 0;
+        shuffleAndPickQuestions(); 
+        loadQuizQuestion();
+    }
+
+    function loadQuizQuestion() {
+        if (currentQuizIndex < 5) {
+            if(quizProgressText) quizProgressText.innerText = `Question: ${currentQuizIndex + 1}/5`;
+            let currentQ = sessionQuizQuestions[currentQuizIndex];
+            if(quizQuestion) quizQuestion.innerText = currentQ.q;
+            if(quizOptionsContainer) {
+                quizOptionsContainer.innerHTML = '';
+                currentQ.a.forEach((opt, idx) => {
+                    let btn = document.createElement('button');
+                    btn.className = 'quiz-option';
+                    btn.innerText = opt;
+                    btn.onclick = () => handleQuizAnswer(idx);
+                    quizOptionsContainer.appendChild(btn);
+                });
+            }
+        } else {
+            evaluateQuizResult();
+        }
+    }
+
+    function handleQuizAnswer(selectedIndex) {
+        if (selectedIndex === sessionQuizQuestions[currentQuizIndex].c) {
+            correctAnswersCount++;
+        }
+        currentQuizIndex++;
+        loadQuizQuestion();
+    }
+
+    function evaluateQuizResult() {
+        if (correctAnswersCount === 5) {
+            if (currentLevel >= 50) {
+                triggerCustomAlert(
+                    "🏆 PERFECT CHAMPION! 🏆", 
+                    "🎉 ULTIMATE VICTORY! You completed all 50 levels perfectly! Amazing!", 
+                    "PLAY AGAIN", 
+                    () => { resetGameSystem(); currentLevel = 1; if(instScreen) instScreen.classList.remove('hidden'); }
+                );
+            } else {
+                if(quizScreen) quizScreen.classList.add('hidden');
+                currentLevel++;
+                currentStage = 1;
+                triggerCustomAlert(
+                    "QUIZ PASSED! ✨", 
+                    `Perfect 5/5 score! Level ${currentLevel} is now officially unlocked.`, 
+                    "ENTER NEXT LEVEL", 
+                    () => { if(instScreen) instScreen.classList.remove('hidden'); }
+                );
+            }
+        } else {
+            if(quizScreen) quizScreen.classList.add('hidden');
+            triggerCustomAlert(
+                "❌ GAME OVER!",
+                `Quiz Failed! You got ${correctAnswersCount}/5 correct. Total wrong answers: ${5 - correctAnswersCount}.`,
+                "START NEW GAME",
+                () => {
+                    resetGameSystem();
+                    if(instScreen) instScreen.classList.remove('hidden'); 
+                }
+            );    
+        }
+    }
+
+    function gameOver(won, type = "total-timeout") {
+        isGameRunning = false;
+        if(animationFrameId) cancelAnimationFrame(animationFrameId);
+        if(timerInterval) clearInterval(timerInterval);
+        
+        let msg = "Oops! Time ran out before you could clear the stage target.";
+        if(type === "ball-timeout") {
+            msg = "Oops! Target ball ka countdown 0 ho gaya! Game Over!";
+        }
+
+        triggerCustomAlert(
+            won ? "VICTORY!" : "GAME OVER! ⏳", 
+            won ? "You crushed it!" : msg, 
+            "RESTART GAME", 
+            () => { 
+                resetGameSystem();
+                if(instScreen) instScreen.classList.remove('hidden');
+            }
+        );
+    }
+
+    function resetGameSystem() {
+        isGameRunning = false;
+        if(animationFrameId) cancelAnimationFrame(animationFrameId);
+        if(timerInterval) clearInterval(timerInterval);
+        score = 0;
+        currentStage = 1;
+        timeLeft = 120;
+        grid = [];
+        explosions = [];
+        targetRow = -1;
+        targetCol = -1;
+        targetBallTimer = 10; 
+        updateHUD();
+        if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(quizScreen) quizScreen.classList.add('hidden');
+        if(alertScreen) alertScreen.classList.add('hidden');
+    }
+</script>
+
 </body>
 </html>
