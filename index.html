@@ -2,124 +2,81 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Target Timer Puzzle</title>
+    <title>Bubble Blaster Pro</title>
     <style>
-        body { 
-            background: #090d16; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            font-family: sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-        }
-        .game-wrapper { 
-            background: #111827; 
-            padding: 30px; 
-            border-radius: 20px; 
-            border: 2px solid #38bdf8; 
-            text-align: center; 
-            width: 700px;
-        }
-        .stats { 
-            display: flex; 
-            justify-content: space-between; 
-            font-size: 18px; 
-            margin-bottom: 20px; 
-            color: #38bdf8; 
-            font-weight: bold; 
-        }
-        canvas { 
-            background: #030712; 
-            border: 2px solid #0284c7; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            display: block;
-            margin: 0 auto;
-        }
-        .btn-start {
-            margin-top: 20px;
-            padding: 12px 30px;
-            background: #0284c7;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        body { margin: 0; background: #0b0e14; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-wrapper { position: relative; width: 600px; height: 750px; background: #1a1f2e; border-radius: 20px; border: 4px solid #38bdf8; box-shadow: 0 0 50px rgba(56, 189, 248, 0.3); text-align: center; }
+        #loading-screen, #menu-screen { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #1a1f2e; z-index: 10; }
+        canvas { background: #050505; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+        .btn { padding: 15px 40px; font-size: 20px; background: #f43f5e; color: white; border: none; border-radius: 50px; cursor: pointer; transition: 0.3s; }
+        .hud { display: flex; justify-content: space-between; padding: 15px; font-weight: bold; color: #38bdf8; }
     </style>
 </head>
 <body>
 
-<div class="game-wrapper">
-    <h1>TARGET TIMER PUZZLE</h1>
-    <div class="stats">
-        <span>SCORE: <span id="score">0</span></span>
-        <span>LEVEL: 1/50</span>
-        <span>STAGE: 1/10</span>
-        <span>TOTAL TIME: <span id="timer">119</span>s</span>
+<div id="game-wrapper">
+    <div id="loading-screen"><h2>LOADING MISSION...</h2></div>
+    <div id="menu-screen" style="display:none;">
+        <h1>BUBBLE BLASTER</h1>
+        <button class="btn" onclick="startGame()">START GAME</button>
     </div>
-    
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
-    
-    <div style="margin-top: 20px;">Get 50 points to unlock Stage 2!</div>
-    <button class="btn-start" onclick="location.reload()">START NEW GAME</button>
+
+    <div class="hud">
+        <span>SCORE: <span id="score">0</span></span>
+        <span>LEVEL: <span id="level">1</span>/50</span>
+    </div>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
 </div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const colors = ['#3b82f6', '#f43f5e', '#10b981'];
-    let balls = [];
-    let score = 0;
+    let score = 0, level = 1;
+    const colors = ['#f87171', '#fbbf24', '#34d399', '#38bdf8', '#c084fc'];
+    let bubbles = [];
 
-    // Grid initialize karna
-    function initGrid() {
-        for(let r=0; r<8; r++) {
-            for(let c=0; c<12; c++) {
-                balls.push({
-                    x: 30 + c*50, y: 30 + r*45,
-                    color: colors[Math.floor(Math.random()*3)],
-                    timer: Math.floor(Math.random()*10) + 5
-                });
-            }
+    // Bubble Class (Falling Physics)
+    class Bubble {
+        constructor() {
+            this.radius = 25;
+            this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+            this.y = -50; // Upar se girna
+            this.speed = 2 + (level * 0.5);
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+            this.timer = 5;
+        }
+        update() {
+            this.y += this.speed;
+        }
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "white";
+            ctx.fillText(this.timer, this.x, this.y);
         }
     }
 
-    // Canvas draw karna
-    function draw() {
-        ctx.clearRect(0, 0, 600, 400);
-        balls.forEach(b => {
-            ctx.fillStyle = b.color;
-            ctx.beginPath(); 
-            ctx.arc(b.x, b.y, 18, 0, Math.PI*2); 
-            ctx.fill();
-            
-            // Timer text
-            ctx.fillStyle = "white";
-            ctx.font = "12px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(b.timer, b.x, b.y + 5);
-        });
+    function startGame() {
+        document.getElementById('menu-screen').style.display = 'none';
+        setInterval(() => bubbles.push(new Bubble()), 1000);
+        animate();
     }
 
-    // Click logic
-    canvas.addEventListener('click', (e) => {
-        score += 10;
-        document.getElementById('score').innerText = score;
-    });
-
-    // Timer logic
-    setInterval(() => {
-        balls.forEach(b => {
-            if(b.timer > 0) b.timer--;
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        bubbles.forEach((b, index) => {
+            b.update();
+            b.draw();
+            if(b.y > canvas.height) bubbles.splice(index, 1);
         });
-        draw();
-    }, 1000);
+        requestAnimationFrame(animate);
+    }
 
-    initGrid();
-    draw();
+    // Loading Simulation
+    setTimeout(() => {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'flex';
+    }, 2000);
 </script>
 </body>
 </html>
