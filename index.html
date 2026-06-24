@@ -1,87 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Target Timer Puzzle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* CrazyGames Guideline: Mobile-friendly and Responsive */
-        body { margin: 0; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif; }
-        .game-wrapper { width: 95%; max-width: 600px; text-align: center; }
-        canvas { border: 4px solid #38bdf8; border-radius: 12px; background: #020617; touch-action: none; width: 100%; }
-        .ui-panel { background: #1e293b; padding: 20px; border-radius: 15px; display: none; }
+        body { margin: 0; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #gameCanvas { background: #1e293b; border: 4px solid #38bdf8; border-radius: 10px; touch-action: none; }
     </style>
 </head>
 <body>
+    <canvas id="gameCanvas"></canvas>
 
-<div class="game-wrapper">
-    <div id="game-ui">
-        <h3>TARGET TIMER</h3>
-        <p>Score: <span id="score">0</span> | Time: <span id="time">10</span>s</p>
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-    </div>
-    
-    <div id="ui-panel" class="ui-panel">
-        <h2 id="q-text">Sawal yahan aayega?</h2>
-        <button onclick="handleAnswer(true)">TRUE</button>
-        <button onclick="handleAnswer(false)">FALSE</button>
-    </div>
-</div>
-
-<script>
-    // CrazyGames Guideline: Use Web Audio API for performance
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(freq) {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
-    }
-
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    let score = 0, gameActive = true;
-
-    // Drawing Logic (High-quality aesthetic)
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#f43f5e";
-        ctx.beginPath();
-        ctx.arc(300, 200, 40, 0, Math.PI*2);
-        ctx.fill();
-        if(gameActive) requestAnimationFrame(draw);
-    }
-
-    canvas.addEventListener('mousedown', () => {
-        if(gameActive) {
-            playSound(440); // Click feedback
-            score += 10;
-            document.getElementById('score').innerText = score;
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Responsive Scaling
+        function resize() {
+            canvas.width = Math.min(window.innerWidth * 0.9, 600);
+            canvas.height = canvas.width * 0.8;
         }
-    });
+        window.onresize = resize;
+        resize();
 
-    // Game Timer (Clean UI update)
-    let timeLeft = 10;
-    const timer = setInterval(() => {
-        timeLeft--;
-        document.getElementById('time').innerText = timeLeft;
-        if(timeLeft <= 0) {
-            clearInterval(timer);
-            gameActive = false;
-            document.getElementById('game-ui').style.display = 'none';
-            document.getElementById('ui-panel').style.display = 'block';
+        // Particles System (Professional Touch)
+        let particles = [];
+        class Particle {
+            constructor(x, y) { this.x=x; this.y=y; this.size=Math.random()*5; this.vx=Math.random()*4-2; this.vy=Math.random()*4-2; this.life=1; }
+            update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.02; }
+            draw() { ctx.fillStyle = '#38bdf8'; ctx.globalAlpha=this.life; ctx.fillRect(this.x, this.y, this.size, this.size); }
         }
-    }, 1000);
 
-    function handleAnswer(ans) {
-        playSound(880); // Success feedback
-        alert("Finished! Score: " + score);
-        location.reload();
-    }
+        canvas.addEventListener('mousedown', (e) => {
+            for(let i=0; i<10; i++) particles.push(new Particle(e.offsetX, e.offsetY));
+        });
 
-    draw();
-</script>
+        function animate() {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            particles.forEach((p, i) => {
+                p.update(); p.draw();
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
 </body>
 </html>
