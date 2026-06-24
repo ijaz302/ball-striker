@@ -1,48 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Target Timer Puzzle</title>
     <style>
-        body { margin: 0; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #gameCanvas { background: #1e293b; border: 4px solid #38bdf8; border-radius: 10px; touch-action: none; }
+        body { margin: 0; background: #09090b; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-container { width: 90%; max-width: 500px; text-align: center; background: #18181b; padding: 20px; border-radius: 16px; border: 2px solid #3f3f46; }
+        canvas { width: 100%; height: auto; background: #000; border-radius: 8px; cursor: pointer; }
+        .btn { background: #2563eb; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 16px; }
+        #quiz-section { display: none; padding: 20px; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Responsive Scaling
-        function resize() {
-            canvas.width = Math.min(window.innerWidth * 0.9, 600);
-            canvas.height = canvas.width * 0.8;
-        }
-        window.onresize = resize;
-        resize();
+<div id="game-container">
+    <div id="start-screen">
+        <h1>Target Timer</h1>
+        <p>Pop the target, then answer the quiz!</p>
+        <button class="btn" onclick="startGame()">START GAME</button>
+    </div>
 
-        // Particles System (Professional Touch)
-        let particles = [];
-        class Particle {
-            constructor(x, y) { this.x=x; this.y=y; this.size=Math.random()*5; this.vx=Math.random()*4-2; this.vy=Math.random()*4-2; this.life=1; }
-            update() { this.x+=this.vx; this.y+=this.vy; this.life-=0.02; }
-            draw() { ctx.fillStyle = '#38bdf8'; ctx.globalAlpha=this.life; ctx.fillRect(this.x, this.y, this.size, this.size); }
-        }
+    <div id="game-ui" style="display:none;">
+        <p>Score: <span id="score">0</span> | Time: <span id="time">10</span>s</p>
+        <canvas id="gameCanvas" width="500" height="300"></canvas>
+    </div>
 
-        canvas.addEventListener('mousedown', (e) => {
-            for(let i=0; i<10; i++) particles.push(new Particle(e.offsetX, e.offsetY));
-        });
+    <div id="quiz-section">
+        <h2 id="q-text">Is 5 + 5 = 10?</h2>
+        <button class="btn" onclick="checkQuiz(true)">TRUE</button>
+        <button class="btn" onclick="checkQuiz(false)">FALSE</button>
+    </div>
+</div>
 
-        function animate() {
-            ctx.clearRect(0,0,canvas.width, canvas.height);
-            particles.forEach((p, i) => {
-                p.update(); p.draw();
-                if(p.life <= 0) particles.splice(i, 1);
-            });
-            requestAnimationFrame(animate);
-        }
+<script>
+    // Audio Context (Standard for Web Games)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(freq) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    let score = 0, timeLeft = 10, gameActive = false;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function startGame() {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'block';
+        gameActive = true;
         animate();
-    </script>
+        let timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('time').innerText = timeLeft;
+            if(timeLeft <= 0) {
+                clearInterval(timer);
+                showQuiz();
+            }
+        }, 1000);
+    }
+
+    canvas.onclick = () => {
+        if(gameActive) {
+            playSound(440);
+            score += 10;
+            document.getElementById('score').innerText = score;
+        }
+    };
+
+    function showQuiz() {
+        gameActive = false;
+        document.getElementById('game-ui').style.display = 'none';
+        document.getElementById('quiz-section').style.display = 'block';
+    }
+
+    function checkQuiz(ans) {
+        if(ans === true) { playSound(880); alert("Correct!"); }
+        else { playSound(220); alert("Wrong!"); }
+        location.reload();
+    }
+
+    function animate() {
+        if(!gameActive) return;
+        ctx.clearRect(0,0,500,300);
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath(); ctx.arc(250, 150, 40, 0, Math.PI*2); ctx.fill();
+        requestAnimationFrame(animate);
+    }
+</script>
 </body>
 </html>
