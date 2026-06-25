@@ -5,17 +5,16 @@
     <title>Bubble Blaster Pro</title>
     <style>
         body { margin: 0; background: #0b0e14; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif; }
-        #game-wrapper { width: 400px; background: #1a1f2e; border: 3px solid #38bdf8; border-radius: 15px; padding: 15px; text-align: center; }
-        .hud { display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #38bdf8; margin-bottom: 10px; }
-        canvas { background: #050505; border-radius: 8px; cursor: crosshair; display: block; margin: 0 auto; }
+        #game-container { width: 400px; background: #1a1f2e; border: 4px solid #38bdf8; border-radius: 20px; padding: 15px; text-align: center; }
+        canvas { background: #050505; border-radius: 10px; cursor: crosshair; }
     </style>
 </head>
 <body>
 
-<div id="game-wrapper">
-    <div class="hud">
+<div id="game-container">
+    <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:#38bdf8; font-weight:bold;">
         <span>SCORE: <span id="score">0</span></span>
-        <span>LEVEL: <span id="level">1</span></span>
+        <span>LEVEL: 1</span>
     </div>
     <canvas id="gameCanvas" width="360" height="500"></canvas>
 </div>
@@ -23,54 +22,68 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    let score = 0, level = 1;
-    let bubbles = [];
+    let score = 0;
     const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#F3FF33'];
+    let bubbles = [];
+
+    // Audio Setup
+    const blastSound = new Audio('https://www.soundjay.com/buttons/sounds/button-3.mp3');
 
     class Bubble {
-        constructor() {
-            this.r = 22; // Bada size
-            this.x = Math.random() * (canvas.width - 44) + 22;
-            this.y = -50;
-            this.vy = 1.5 + (level * 0.2);
-            this.color = colors[Math.floor(Math.random() * colors.length)];
+        constructor(x, y, color, isBomb = false) {
+            this.x = x; this.y = y; this.r = 25;
+            this.color = color;
+            this.isBomb = isBomb;
         }
         draw() {
             ctx.fillStyle = this.color;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+            if(this.isBomb) {
+                // Bomb Image Style
+                ctx.fillStyle = "black";
+                ctx.font = "bold 20px Arial";
+                ctx.fillText("💣", this.x - 10, this.y + 8);
+            }
         }
     }
 
-    // Logic: Match 3 aur Burst
+    // Initialize Grid
+    function initGrid() {
+        for(let r=0; r<6; r++) {
+            for(let c=0; c<6; c++) {
+                let isBomb = Math.random() > 0.9;
+                bubbles.push(new Bubble(c*60 + 30, r*60 + 30, colors[Math.floor(Math.random()*colors.length)], isBomb));
+            }
+        }
+    }
+
     canvas.addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
 
-        // Check clicking on bubbles
         bubbles.forEach((b, i) => {
             if (Math.hypot(b.x - mx, b.y - my) < b.r) {
-                // Blast logic: Clicked bubble removes
-                bubbles.splice(i, 1);
-                score += 10;
+                blastSound.play(); // Audio
+                if(b.isBomb) {
+                    bubbles = []; // Bomb blast: clear all
+                    score += 100;
+                } else {
+                    bubbles.splice(i, 1);
+                    score += 10;
+                }
                 document.getElementById('score').innerText = score;
-                // Level Up Logic
-                if (score >= 100) { level++; document.getElementById('level').innerText = level; score = 0; }
             }
         });
     });
 
     function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if(Math.random() < 0.02) bubbles.push(new Bubble());
-        
-        bubbles.forEach((b, i) => {
-            b.y += b.vy;
-            b.draw();
-            if(b.y > canvas.height) bubbles.splice(i, 1);
-        });
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        bubbles.forEach(b => b.draw());
         requestAnimationFrame(animate);
     }
+
+    initGrid();
     animate();
 </script>
 </body>
